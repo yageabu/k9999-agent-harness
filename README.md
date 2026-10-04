@@ -71,7 +71,7 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 - [`docs/decisions.md`](docs/decisions.md) — why this shape and not the alternatives
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
-- [`site/index.html`](site/index.html) — the product page. One self-contained file, no external requests. Open it directly, or serve it from GitHub Pages with the source root set to `/site`. Export a PDF with `playwright pdf site/index.html k9999.pdf`.
+- [`site/index.html`](site/index.html) — the product page. One self-contained file, no external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if the page ever references an external resource. Open it directly, or export a PDF with `playwright pdf site/index.html k9999.pdf`.
 - [`AGENTS.md`](AGENTS.md) — conventions for an agent working in this repository
 
 ## License

@@ -1,0 +1,59 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A queued run waits rather than cancelling, so a
+# deployment in flight is never torn down half way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The page is only useful offline if it fetches nothing. Enforce that
+      # here, because a CDN link added later would fail silently in a browser
+      # and only show up as a slow, half-styled page.
+      - name: Reject external requests
+        run: |
+          node -e '
+            const fs = require("fs");
+            const html = fs.readFileSync("site/index.html", "utf8");
+            const refs = [...html.matchAll(/(?:src|href)\s*=\s*["\x27]((?:https?:)?\/\/[^"\x27]*)/g)].map((m) => m[1]);
+            if (refs.length > 0) {
+              console.error("site/index.html references external resources:");
+              for (const ref of refs) console.error("  " + ref);
+              process.exit(1);
+            }
+            console.log("site/index.html is self-contained");
+          '
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
