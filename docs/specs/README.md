@@ -28,8 +28,9 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 |---|---|---|---|---|
 | 0001 | [Non-blocking interaction](0001-non-blocking-interaction.md) | `accepted` | — | `Agent` → `AgentHarness` on one channel |
 | 0002 | [Reversibility, not modes](0002-reversibility-not-modes.md) | `accepted` | 0001 | `reversibility` on the tool registry |
-| 0003 | [Jev decision layer](0003-jev-decision-layer.md) | `accepted` | 0004 | Probe latency and cost before wiring it |
+| 0003 | [An optional decision layer](0003-optional-decision-layer.md) | `accepted` | 0004 | Probe latency and cost before wiring it in |
 | 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
+| 0005 | [Two launch commands](0005-two-launch-commands.md) | `accepted` | — | A second bin pointing at the same entry |
 
 ## Build order
 
@@ -38,14 +39,18 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 ```
 0004  measurement + budget     ── the baseline everything else is judged against
  │
- ├──▶ 0003  Jev decisions       ── needs a probe first, then a task-set comparison
+ ├──▶ 0003  decision layer     ── needs a probe first, then a task-set comparison
  │
- └──▶ 0001  non-blocking core   ── the largest change; needs the baseline to prove no regression
-       │
-       └──▶ 0002  reversibility ── builds on the interaction record from 0001
+ ├──▶ 0001  non-blocking core  ── the largest change; needs the baseline to prove no regression
+ │     │
+ │     └──▶ 0002  reversibility ── builds on the interaction record from 0001
+ │
+ └──▶ 0005  launch commands    ── small and independent; the first thing worth doing
 ```
 
-0001 and 0003 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes.
+0001, 0003, and 0005 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes.
+
+0005 is the smallest item here and the only one that changes nothing about how the agent works. It is listed as the first move for that reason, not because it matters most.
 
 ## Rules every spec follows
 
@@ -54,3 +59,4 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 3. **Name what is out of scope.** A spec with no exclusions will grow until it stalls.
 4. **No numbers for unbuilt work.** A figure on the product page must have a command that regenerates it. Planned work is described, never quantified.
 5. **Prefer a property over a mode.** A mode asks the user to choose correctly before anything happens. A property applies whether or not anyone remembered it exists.
+6. **Every optional component has a defined off-path.** Not a null, not a fallback: a real behavior with a test. A component whose absence breaks a decision is required whether or not the configuration says so.

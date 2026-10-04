@@ -53,7 +53,7 @@ For the shipped tools:
 Declaring `bash` irreversible means every shell command needs authorization, which is unusable. The declaration is therefore the *floor*, not the verdict, and two things raise or lower it:
 
 1. **A static allowlist** for commands that are obviously read-only: `grep`, `git status`, `ls`, `cat`. Deterministic, no model, no cost.
-2. **A dynamic decision** for everything else, when the Jev decision layer is available ([0003](0003-jev-decision-layer.md)). `noul` on "would running this command destroy or publish something that cannot be recovered or recalled?"
+2. **A dynamic decision** for everything else, when the decision layer is switched on ([0003](0003-optional-decision-layer.md)). `noul` on "would running this command destroy or publish something that cannot be recovered or recalled?" The layer is optional, so this step is skipped entirely when it is off, and the floor applies instead.
 
 The static allowlist runs first because it is free and exact. The dynamic decision runs only on what the allowlist cannot classify. When neither can classify a command, the floor applies: it is irreversible.
 

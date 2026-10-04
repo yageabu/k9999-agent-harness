@@ -25,7 +25,7 @@ There is a precedent in this repository. Decision record 0007 rejects ASD-STE100
 | `probe` | What does one call cost in latency and tokens? | A micro-benchmark of one component, no task semantics |
 | `task` | Did the work get done, and at what cost? | A fixed task set end to end |
 
-The Jev latency probe in [0003](0003-jev-decision-layer.md) is a `probe`. Comparing tool routing against declaring every tool is a `task` run.
+The Jev latency probe in [0003](0003-optional-decision-layer.md) is a `probe`. Comparing tool routing against declaring every tool is a `task` run.
 
 ## Layout
 

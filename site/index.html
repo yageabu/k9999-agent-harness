@@ -124,8 +124,50 @@
 
 	h1 .thin { color: var(--dim); font-weight: 300; }
 
-	.lede { margin: 30px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
+	.lede { margin: 26px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
 	.lede strong { color: var(--text); font-weight: 600; }
+
+	.slogan {
+		margin: 24px 0 0;
+		font-size: clamp(19px, 2.3vw, 24px);
+		font-weight: 600;
+		letter-spacing: -0.012em;
+		color: var(--text);
+	}
+
+	.slogan .en {
+		display: block;
+		margin-top: 7px;
+		font-family: var(--mono);
+		font-size: 13px;
+		font-weight: 400;
+		letter-spacing: 0.03em;
+		color: var(--amber);
+	}
+
+	.commands {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1px;
+		background: var(--line);
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		overflow: hidden;
+		margin-top: 28px;
+		max-width: 690px;
+	}
+
+	.commands span {
+		background: var(--panel);
+		padding: 15px 18px;
+		font-size: 14.5px;
+		color: var(--muted);
+	}
+
+	.commands b { font-family: var(--mono); font-weight: 600; margin-right: 8px; }
+	.commands b.ok { color: var(--amber); }
+	.commands b.pending { color: var(--dim); }
+	.commands em { display: block; font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin-top: 5px; letter-spacing: 0.04em; }
 
 	.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
 
@@ -333,15 +375,21 @@
 	<div class="hero">
 		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
 		<h1>在 pi-agent-core 之上<br><span class="thin">组装你自己的 Agent Harness</span></h1>
+		<p class="slogan">永不阻塞，先测量<span class="en">Never blocks. Measures first.</span></p>
 		<p class="lede">
-			内核、模型层、provider 覆盖来自上游；<strong>profile、prompt 组装、工具注册表、CLI 全部归你所有</strong>。
+			<strong>建立在 Pi 之上</strong> —— 感谢它的作者把 Agent 内核、模型层和终端渲染做成了可复用的库，而不是一个应用。
+			内核、模型层、provider 覆盖从上游来；profile、prompt 组装、工具注册表、启动命令、以及测量工具全部归本仓库所有。
 			四条立场已经写成可验收的契约：测量工具已经在跑，其余三条都还没开始。
 			这一页会一直标明哪些数字是实测的，哪些东西还不存在。
 		</p>
+		<div class="commands">
+			<span><b class="ok">k9999</b>写代码、改代码</span>
+			<span><b class="pending">kula</b>读数据、报告它说了什么<em>SPEC 0005 · 尚未接线</em></span>
+		</div>
 		<div class="hero-actions">
 			<span class="btn primary"><span class="tick">$</span> npm run check</span>
 			<span class="btn"><span class="tick">✓</span> 43 tests · 0 credentials</span>
-			<span class="btn">4 specs · 1 building</span>
+			<span class="btn">5 specs · 1 building</span>
 		</div>
 	</div>
 
@@ -394,12 +442,13 @@
 
 	<section id="stance-2">
 		<div class="sec-head">
-			<span class="chip spec">SPEC 0003 · 已接受 · 未实现</span>
+			<span class="chip spec">SPEC 0003 · 已接受 · 可选 · 未实现</span>
 			<p class="sec-num">02 / STANCE</p>
 			<h2>决策分层：判断交给判断模型</h2>
 			<p>
 				每轮里大量的小决策，用前沿模型做是错的工具。问它"这句话是提问还是指令"，
 				花掉一整次往返和一个大 prompt，只换来一个 bit，而且这个 bit 藏在散文里，要解析、可能畸形。
+				<strong>但这一层是可选的，而且默认关闭</strong> —— 没配 key 的人应该拿到一个能跑的 harness，不是一个配置报错。
 			</p>
 		</div>
 		<div class="table-panel table-scroll">
@@ -436,6 +485,15 @@
 			<b>不许问 Jev 的事：</b>
 			破折号有没有 → 正则。测试过没过 → 读退出码。文件在不在 → <code>stat</code>。
 			把可判定的事实送去问模型，是拿方差和延迟换零收益。允许问的问题列得很短，要靠加一行"失败模式 + 测试"才会变长。
+		</p>
+		<p class="prov">
+			<b>关掉不是缺一个分支，是每个决策点都有一条真实路径。</b>
+			<br>需要问人吗 → 就问。工具路由 → 声明 profile 里的全部工具。
+			输出达标了吗 → 模型自己决定停不停。
+			<br><b>可逆性判定不走这条路：</b>只读白名单和不可逆下限是本地的、免费的、永远在的，
+			所以<strong>无人值守的安全性不依赖任何 key</strong>。决策模型只是把白名单盖不到的命令分得更准。
+			<br>另外，选择开启却没有可用 key 时是<strong>加载期报错，不静默回退</strong> ——
+			配置说着一件事、测量量着另一件事，正是这个项目存在的意义所在。
 		</p>
 	</section>
 
@@ -797,7 +855,7 @@
 					</tr>
 					<tr>
 						<td class="mono">0003</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0003-jev-decision-layer.md">Jev 决策层</a></td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0003-optional-decision-layer.md">可选的决策层</a></td>
 						<td><span class="chip spec">accepted</span></td>
 						<td class="mono">0004</td>
 						<td>先探测延迟与成本，再接进任何路径</td>
@@ -808,6 +866,13 @@
 						<td><span class="chip building">building</span></td>
 						<td class="mono">—</td>
 						<td><code>packages/eval</code> 骨架与 replay 已完成；probe 模式未开始</td>
+					</tr>
+					<tr>
+						<td class="mono">0005</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0005-two-launch-commands.md">两个启动命令</a></td>
+						<td><span class="chip spec">accepted</span></td>
+						<td class="mono">—</td>
+						<td>第二个 bin 指向同一个入口，<code>kula</code> 默认 <code>data</code></td>
 					</tr>
 				</tbody>
 			</table>
@@ -835,7 +900,7 @@
 			</div>
 			<div class="gap-row">
 				<span class="tag open">未实现 · 0 行代码</span>
-				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>Jev 决策层</b>（0003）—— 三份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
+				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>可选决策层</b>（0003）· <b>两个启动命令</b>（0005）—— 四份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
 			</div>
 			<div class="gap-row">
 				<span class="tag">DEFERRED</span>
@@ -874,7 +939,7 @@
 <span class="c"># 测量工具：3 个任务、重放校验，同样零凭据</span>
 <span class="a">$</span> npm run eval -- --scripted --verify-replay
 
-<span class="c"># 列出 profile</span>
+<span class="c"># 列出 profile（两个启动命令见 SPEC 0005，尚未接线）</span>
 <span class="a">$</span> npm run k9999 -- --list
   code         Code Agent
   data         Data Analysis Agent
@@ -897,7 +962,8 @@
 	<div class="wrap">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 43 tests · 4 specs</span>
+		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 43 tests · 5 specs</span>
+		<span class="mono">never blocks · measures first</span>
 	</div>
 </footer>
 

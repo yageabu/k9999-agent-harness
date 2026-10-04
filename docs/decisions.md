@@ -228,3 +228,53 @@ Alongside it, a budget per task: a cost, wall-time, and turn ceiling that stops 
 **Revisit when** never, in the sense that this is a standing constraint rather than a choice. It is recorded here because a constraint nobody wrote down is the first one dropped.
 
 **Rejected.** A model-graded rubric would let the eval judge quality without a fixture, and it is the trap 0007 describes: the grader and the graded share a bias. A leaderboard would answer a question nobody asked, since the question is whether a change to this harness helped.
+
+---
+
+## 0013 — The decision layer is optional, and off by default
+
+**Status:** accepted. Narrows 0011.
+
+**Context.** 0011 introduces Jev as a decision layer and argues for it on cost, latency, and its own reported usage. It leaves one thing unsaid: what happens without it.
+
+A hosted decision service is a dependency. It needs a key, a network, and a vendor that keeps running, and an owner who has none of those should still get a working harness rather than a configuration error. 0011 as written reads as though the layer were the design, when it is an optimisation on top of one.
+
+**Decision.** The decision layer is optional and off by default. Every decision point states a real off-path, and the off-path is what the harness does today:
+
+| Decision | Off-path |
+|---|---|
+| Does this message need a human? | The agent asks. 0009 makes asking non-blocking, so this stays workable |
+| Which tools does this turn need? | All of the profile's tools are declared |
+| Is this command irreversible? | The static allowlist decides; anything else falls to the floor and is treated as irreversible |
+| Does the output satisfy the goal? | The model stops or continues on its own |
+| Does this task need a larger model? | The profile's model is used |
+
+Selecting the layer without a usable key fails at load rather than falling back. A run that quietly took the off-path while its configuration promised otherwise would report numbers describing something other than the configuration under test.
+
+**Consequences.** This is the second time a component's presence became part of what a measurement means. `degraded` was the first: a run where a component fell back describes the fallback. Now a run where a component was switched off describes the off-path. Reports already refuse to subtract across a differing `usageSource`, and the same refusal extends to a differing component set.
+
+The important consequence is about safety rather than cost. **The reversibility gate does not depend on the decision layer.** The allowlist and the floor are local, free, and always available, so an unattended run is protected whether or not any key is configured. The decision layer improves classification for commands the allowlist cannot reach, which is quality on top of a gate that already works.
+
+**Revisit when** a decision point cannot be given a working off-path. That would mean the point is not a decision but a required capability, and it belongs somewhere other than this layer.
+
+**Rejected.** Making the layer required would trade a harness that always works for one that works when a vendor does. Falling back silently from `"jev"` to `"off"` would be worse: the configuration would say one thing and the measurement would describe another, which is precisely the failure 0007 and 0012 exist to prevent.
+
+---
+
+## 0014 — Two launch names for two agent types
+
+**Status:** accepted
+
+**Context.** Two agent types ship: one writes code and is judged by a verifier, the other reads data and is judged by whether its numbers are traceable. They differ in tools, thinking budget, and response shape.
+
+Expressing the second as `k9999 -p data` makes an identity into a flag. A name is remembered; a command line with a mode is looked up.
+
+**Decision.** Two commands, one implementation. `k9999` defaults to the `code` profile and `kula` to `data`. Both are bins pointing at the same entry module, and the launch name only supplies a default.
+
+The profile ids stay `code` and `data`. Renaming `profiles/code/` to `profiles/k9999/` would put the project's own name inside its lookup namespace, and a failure would read `Unknown profile "k9999"` in a repository called `k9999-agent-harness`.
+
+**Consequences.** A test asserts `kula --profile code` resolves exactly as `k9999 --profile code`, so the equivalence is enforced rather than intended. An unrecognized launch name — the entry run by path, as the test suite does — leaves the default at `code` instead of failing, because failing there would break the suite for a cosmetic reason.
+
+**Revisit when** a third agent type exists. Two names are a mapping; three are a pattern, and a pattern deserves a different mechanism.
+
+**Rejected.** Two packages would duplicate argument parsing and event rendering for a shared implementation. Keeping a single command with `-p` would keep working and keep reading as one product with modes.
