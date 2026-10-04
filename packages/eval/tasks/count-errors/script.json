@@ -1,0 +1,94 @@
+[
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:h5mduvjo4wd",
+				"name": "read",
+				"arguments": {
+					"path": "data.txt"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:f7wx1bsa0r5",
+				"name": "bash",
+				"arguments": {
+					"command": "grep -c ' ERROR ' data.txt > count.txt"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "text",
+				"text": "6 lines have level `ERROR`. Wrote `6` to `count.txt`."
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "stop",
+		"timestamp": 1791110637747
+	}
+]

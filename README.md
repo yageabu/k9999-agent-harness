@@ -31,11 +31,12 @@ The `data` profile deliberately has no `edit`. A data agent writes scripts to fi
 
 ```bash
 npm install
-npm run check          # typecheck + tests, no API key needed
+npm run check          # typecheck, 43 tests, and the site check. No API key needed
 npm run k9999 -- --list
 npm run k9999                          # interactive, code profile
 npm run k9999 -- -p data
 npm run k9999 -- --print "what does packages/core/src/prompt.ts do?"
+npm run eval -- --scripted --verify-replay   # the measurement harness, also unauthenticated
 ```
 
 Set `DEEPSEEK_API_KEY` before a run that talks to a real model. The test suite uses a scripted provider and needs no credentials.
@@ -45,12 +46,15 @@ Set `DEEPSEEK_API_KEY` before a run that talks to a real model. The test suite u
 ```
 packages/core/          profiles, prompt assembly, tool registry, agent wiring
 packages/cli/           argument parsing, event rendering, REPL
+packages/eval/          tasks, transcripts, replay, budgets, and comparison reports
 profiles/<id>/          one agent type per directory
 skills/<name>/SKILL.md  long-form knowledge, advertised but loaded on demand
-docs/                   decisions and writing rules
+docs/                   decisions, specs, and writing rules
+scripts/                repository checks
+site/                   the product page, published to GitHub Pages
 ```
 
-`packages/core` never imports `packages/cli`. The CLI owns every decision about how an event looks; the core owns every decision about what an event means.
+`packages/core` never imports `packages/cli`. The CLI owns every decision about how an event looks; the core owns every decision about what an event means. `packages/eval` depends on `packages/core` and is depended on by nothing.
 
 ## How a run is assembled
 
@@ -77,9 +81,11 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, and the CLI. Eighteen tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, and the CLI. Forty-three tests, no credentials required.
 
-Accepted and unimplemented: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-jev-decision-layer.md), [0004](docs/specs/0004-measurement-and-budget.md). The product page marks the two states separately and gives no figures for the second.
+Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness. Task loading, deterministic predicates, JSONL transcripts, offline replay, budgets, and comparison reports all work. Missing: `probe` mode, and any figure from a real provider.
+
+Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-jev-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
 
 ## License
 

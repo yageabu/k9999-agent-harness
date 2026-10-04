@@ -1,0 +1,17 @@
+{
+	"name": "@k9999/eval",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Measurement harness: fixed tasks, recorded transcripts, and comparable reports.",
+	"license": "MIT",
+	"exports": {
+		".": "./src/index.ts",
+		"./package.json": "./package.json"
+	},
+	"dependencies": {
+		"@earendil-works/pi-agent-core": "^1.0.2",
+		"@earendil-works/pi-ai": "^1.0.2",
+		"@k9999/core": "*"
+	}
+}

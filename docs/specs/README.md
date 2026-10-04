@@ -11,6 +11,8 @@ A spec is the contract for something not built yet. It states the problem, the i
 
 A decision record is edited when the decision changes. A spec is edited while it is being implemented, and is superseded by the code and its tests once it ships. Neither is deleted.
 
+Implementation lives in `packages/`. A spec's status moves to `building` as soon as code exists, even when most of it does not, because a status that lags the repository is worse than no status.
+
 ## Status
 
 | Status | Meaning |
@@ -27,7 +29,7 @@ A decision record is edited when the decision changes. A spec is edited while it
 | 0001 | [Non-blocking interaction](0001-non-blocking-interaction.md) | `accepted` | — | `Agent` → `AgentHarness` on one channel |
 | 0002 | [Reversibility, not modes](0002-reversibility-not-modes.md) | `accepted` | 0001 | `reversibility` on the tool registry |
 | 0003 | [Jev decision layer](0003-jev-decision-layer.md) | `accepted` | 0004 | Probe latency and cost before wiring it |
-| 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `accepted` | — | `packages/eval` skeleton and replay |
+| 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
 
 ## Build order
 

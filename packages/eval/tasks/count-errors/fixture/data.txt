@@ -1,0 +1,20 @@
+2026-09-01T10:00:01Z INFO  request received id=8812
+2026-09-01T10:00:01Z INFO  routing to upstream eu-west-1
+2026-09-01T10:00:02Z ERROR upstream timeout id=8812 attempt=1
+2026-09-01T10:00:02Z WARN  retrying id=8812
+2026-09-01T10:00:03Z INFO  request received id=8813
+2026-09-01T10:00:03Z ERROR upstream timeout id=8812 attempt=2
+2026-09-01T10:00:04Z ERROR circuit open upstream=eu-west-1
+2026-09-01T10:00:04Z INFO  request received id=8814
+2026-09-01T10:00:05Z ERROR upstream timeout id=8812 attempt=3
+2026-09-01T10:00:05Z INFO  fallback to eu-central-1
+2026-09-01T10:00:06Z INFO  request received id=8815
+2026-09-01T10:00:06Z ERROR upstream refused id=8814
+2026-09-01T10:00:07Z WARN  queue depth 42
+2026-09-01T10:00:07Z INFO  request received id=8816
+2026-09-01T10:00:08Z ERROR upstream timeout id=8815
+2026-09-01T10:00:08Z INFO  circuit half-open upstream=eu-west-1
+2026-09-01T10:00:09Z INFO  request received id=8817
+2026-09-01T10:00:09Z INFO  request received id=8818
+2026-09-01T10:00:10Z INFO  served id=8817 in 12ms
+2026-09-01T10:00:10Z INFO  served id=8818 in 9ms

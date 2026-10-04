@@ -1,0 +1,128 @@
+[
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:unhnnizps6g",
+				"name": "read",
+				"arguments": {
+					"path": "counter.mjs"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:k5o0jbz91z",
+				"name": "edit",
+				"arguments": {
+					"path": "counter.mjs",
+					"oldText": "for (let index = 1; index < n; index += 1) {",
+					"newText": "for (let index = 1; index <= n; index += 1) {"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:q2ki4cx8h7",
+				"name": "bash",
+				"arguments": {
+					"command": "node verify.mjs"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "text",
+				"text": "`counter.mjs` summed 1..n-1 because the loop used `index < n`. Changed it to `index <= n`. `node verify.mjs` printed `verify ok`."
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "stop",
+		"timestamp": 1791110637747
+	}
+]

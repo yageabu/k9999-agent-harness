@@ -1,0 +1,126 @@
+[
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:dz2kg2f10o7",
+				"name": "read",
+				"arguments": {
+					"path": "verify.mjs"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:6abl1rh6n5h",
+				"name": "bash",
+				"arguments": {
+					"command": "cat > sum.mjs <<'EOF'\n/**\n * Sum the amount of every row.\n *\n * @param {Array<{ region: string, amount: number }>} rows\n * @returns {number}\n */\nexport function total(rows) {\n\treturn rows.reduce((sum, row) => sum + row.amount, 0);\n}\nEOF"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "toolCall",
+				"id": "tool:1791110637747:arzwqzegkmc",
+				"name": "bash",
+				"arguments": {
+					"command": "node verify.mjs"
+				}
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "toolUse",
+		"timestamp": 1791110637747
+	},
+	{
+		"role": "assistant",
+		"content": [
+			{
+				"type": "text",
+				"text": "Created `sum.mjs` exporting `total(rows)`, which sums every `amount` and returns 0 for an empty array. `node verify.mjs` printed `verify ok`."
+			}
+		],
+		"api": "faux",
+		"provider": "faux",
+		"model": "faux-1",
+		"usage": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0,
+			"totalTokens": 0,
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"total": 0
+			}
+		},
+		"stopReason": "stop",
+		"timestamp": 1791110637747
+	}
+]

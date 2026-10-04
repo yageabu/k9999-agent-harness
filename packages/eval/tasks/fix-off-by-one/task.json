@@ -1,0 +1,5 @@
+{
+	"id": "fix-off-by-one",
+	"prompt": "`counter.mjs` exports `countUpTo(n)`, documented to sum the integers from 1 to n inclusive. Its test fails. Find the defect, fix it, and run `node verify.mjs` to prove the fix. Do not change `verify.mjs`.",
+	"check": { "kind": "command", "command": "node verify.mjs" }
+}

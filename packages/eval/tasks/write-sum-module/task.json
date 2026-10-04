@@ -1,0 +1,5 @@
+{
+	"id": "write-sum-module",
+	"prompt": "Create `sum.mjs` exporting a function `total(rows)`. `rows` is an array of objects shaped `{ region: string, amount: number }`. It must return the sum of every `amount`, and zero for an empty array. `data.csv` is sample data you may use to check your work. Run `node verify.mjs` to prove the module satisfies its contract.",
+	"check": { "kind": "command", "command": "node verify.mjs" }
+}

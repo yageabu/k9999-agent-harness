@@ -85,16 +85,27 @@ interface Budget {
 
 Configured per task and per run. On breach the run stops and reports the reason. It does not continue and does not silently pick a cheaper path, because a budget that changes behavior measures something other than the thing under test.
 
+The ceiling is checked at turn boundaries, so a run stops at most one turn after the turn that broke it. The turn already in flight when the breach is detected completes; it cannot be un-run.
+
+A breached run is never a success, even when its predicate passes. A run cut short after its side effects landed can leave the fixture in a passing state while the work that would have followed never happened. `test/eval.test.ts` covers exactly that case: the edit succeeds, the verifier passes, and the run is still reported as a failure with `breached: true`.
+
 This is also the answer to an unattended agent spending without limit: **when nobody is watching, the only safe default action is to stop and state why.** That sentence is the budget's whole design.
+
+## Provenance of the numbers
+
+A run records whether its token figures were `reported` by a provider or `estimated`. The scripted provider estimates from character counts and reports every cost as zero, which makes its figures useful for comparing harness changes against each other and useless for comparing against a real provider.
+
+The report refuses to subtract one from the other: mixing sources sets `mixedUsageSource` and suppresses every delta, the same way a degraded run does. The absolute totals are still printed, because they are still facts about their own kind.
 
 ## Acceptance criteria
 
 1. `npm run eval -- --tasks <set>` produces a report with every metric above, from a single command, with no manual steps.
 2. A test asserts a task without a success predicate fails to load. A task with no way to fail is not a measurement.
 3. A test asserts a report containing a `degraded` run marks it and refuses to present its delta as a like-for-like comparison.
-4. A test asserts a run exceeding its budget stops and reports the breach rather than completing.
-5. Replay re-runs a recorded transcript with the network disabled and produces identical metrics, proving the harness is deterministic apart from the model.
-6. The product page cites no figure without a committed command that regenerates it.
+4. A test asserts a run exceeding its budget stops and reports the breach rather than completing, and that the breached run is not counted as a success even when its predicate passes.
+5. Replay re-runs a recorded transcript with the network disabled and produces identical metrics on every deterministic key, proving the harness is deterministic apart from the model.
+6. A test asserts a report mixing estimated and reported token figures computes no delta.
+7. The product page cites no figure without a committed command that regenerates it.
 
 ## Out of scope
 

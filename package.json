@@ -13,6 +13,8 @@
 	},
 	"scripts": {
 		"k9999": "node packages/cli/src/index.ts",
+		"eval": "node packages/eval/src/cli.ts",
+		"eval:scripts": "node packages/eval/scripts/build-task-scripts.mjs",
 		"typecheck": "tsc --noEmit",
 		"test": "node --test \"packages/*/test/*.test.ts\"",
 		"check:site": "node scripts/check-site.mjs site/index.html",

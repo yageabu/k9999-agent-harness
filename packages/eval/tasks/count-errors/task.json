@@ -1,0 +1,7 @@
+{
+	"id": "count-errors",
+	"prompt": "`data.txt` is a service log, one entry per line. Count the lines whose level is `ERROR` and write nothing but that count into a new file named `count.txt`.",	"check": {
+		"kind": "command",
+		"command": "test \"$(tr -d '[:space:]' < count.txt)\" = \"6\""
+	}
+}

@@ -97,6 +97,7 @@
 	}
 
 	.chip.spec { color: var(--amber); border-color: rgba(240, 167, 48, 0.34); background: rgba(240, 167, 48, 0.07); }
+	.chip.building { color: var(--green); border-color: rgba(240, 167, 48, 0.34); background: rgba(240, 167, 48, 0.07); }
 	.chip.shipped { color: var(--green); border-color: rgba(88, 201, 138, 0.3); background: rgba(88, 201, 138, 0.06); }
 	.chip.reject { color: var(--muted); }
 
@@ -334,13 +335,13 @@
 		<h1>在 pi-agent-core 之上<br><span class="thin">组装你自己的 Agent Harness</span></h1>
 		<p class="lede">
 			内核、模型层、provider 覆盖来自上游；<strong>profile、prompt 组装、工具注册表、CLI 全部归你所有</strong>。
-			四条立场已经写成可验收的契约，没有一条已实现。
+			四条立场已经写成可验收的契约：测量工具已经在跑，其余三条都还没开始。
 			这一页会一直标明哪些数字是实测的，哪些东西还不存在。
 		</p>
 		<div class="hero-actions">
 			<span class="btn primary"><span class="tick">$</span> npm run check</span>
-			<span class="btn"><span class="tick">✓</span> 18 tests · 0 credentials</span>
-			<span class="btn">4 specs · 0 implemented</span>
+			<span class="btn"><span class="tick">✓</span> 43 tests · 0 credentials</span>
+			<span class="btn">4 specs · 1 building</span>
 		</div>
 	</div>
 
@@ -476,7 +477,7 @@
 
 	<section id="stance-4">
 		<div class="sec-head">
-			<span class="chip spec">SPEC 0004 · 已接受 · 未实现</span>
+			<span class="chip building">SPEC 0004 · 进行中 · 3 个任务可跑</span>
 			<p class="sec-num">04 / STANCE</p>
 			<h2>先测量，再优化</h2>
 			<p>
@@ -511,6 +512,40 @@
 			每个 task 带一个确定性谓词：退出码、文件内容、一个通过的测试。不用模型打分。
 			理由写在 ADR-0007 里：那份研究里，指令集<strong>在自己的 linter 上赢了，在所有读者看得见的指标上全输</strong>。
 			模型评分是同一个陷阱的多步骤版本 —— 评委和被评的对象共享同一个偏见。
+		</p>
+
+		<div class="term-wrap" style="margin-top:28px">
+			<div class="term-head">
+				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
+				<span class="path">已实现 · 下面这段是真实输出</span>
+			</div>
+<pre><span class="a">$</span> npm run eval -- --scripted --verify-replay
+  [code] count-errors run 1/1 (scripted)
+  [code] fix-off-by-one run 1/1 (scripted)
+  [code] write-sum-module run 1/1 (scripted)
+
+  3 task(s), 1 config(s), 1 run(s) each
+
+  baseline: code
+  tasks: 3 comparable of 3
+  <span class="a">usage figures: estimated</span>
+
+  config        tasks      in     out  decider    turns     cost  success
+  code            3/3     4957      80        0     3.67   0.0000     100%
+
+  <span class="a">estimated token figures.</span> The scripted provider counts characters, not tokens, and
+  reports every cost as zero. These numbers describe the harness, not a model, and
+  are not comparable to a run against a real provider.
+
+  <span class="g">replay: 3/3 matched on every deterministic metric</span>
+</pre>
+		</div>
+		<p class="prov">
+			<b>注意这页没有单独引用上面任何 token 数字。</b>
+			脚本模式的 usage 是字符数除以四估算的，成本恒为零。
+			它能用来比较 harness 自己的改动，不能用来和真 provider 比。
+			所以报告自己会把来源标出来，并在两种来源混在一起时<strong>拒绝给出差值</strong>。
+			可复现的东西是：3 个任务、3/3 谓词通过、3/3 重放逐项一致 —— 一条命令、零凭据。
 		</p>
 	</section>
 
@@ -770,9 +805,9 @@
 					<tr>
 						<td class="mono">0004</td>
 						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0004-measurement-and-budget.md">测量与预算</a></td>
-						<td><span class="chip spec">accepted</span></td>
+						<td><span class="chip building">building</span></td>
 						<td class="mono">—</td>
-						<td><code>packages/eval</code> 骨架与 replay</td>
+						<td><code>packages/eval</code> 骨架与 replay 已完成；probe 模式未开始</td>
 					</tr>
 				</tbody>
 			</table>
@@ -792,11 +827,15 @@
 		<div class="gaps">
 			<div class="gap-row">
 				<span class="tag done">已交付 · 有测试</span>
-				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 8 条输出规则写进两个 profile · 18 个测试</p>
+				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 8 条输出规则写进两个 profile</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag done">进行中 · SPEC 0004</span>
+				<p><b>测量工具</b> —— 3 个任务、确定性谓词、JSONL 轨迹、无网络重放、预算闸、报告在降级或来源不一致时拒绝给差值。25 个测试锁住这些行为。缺：<code>probe</code> 模式，以及接真 provider 跑出非估算的数字。<b>43 个测试总计</b></p>
 			</div>
 			<div class="gap-row">
 				<span class="tag open">未实现 · 0 行代码</span>
-				<p><b>不阻塞的交互</b> · <b>可逆性设闸</b> · <b>Jev 决策层</b> · <b>measurement 与预算</b> —— 四份 spec 都是 <code>accepted</code>，四份都还没开始。这一页不给它们任何数字。</p>
+				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>Jev 决策层</b>（0003）—— 三份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
 			</div>
 			<div class="gap-row">
 				<span class="tag">DEFERRED</span>
@@ -824,12 +863,16 @@
 				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
 				<span class="path">bash</span>
 			</div>
-<pre><span class="c"># 安装并验证：typecheck + 18 个测试，不需要 API key</span>
+<pre><span class="c"># 安装并验证：typecheck + 43 个测试，不需要 API key</span>
 <span class="a">$</span> npm install
 <span class="a">$</span> npm run check
-  <span class="g"># tests 18</span>
-  <span class="g"># pass 18</span>
+  <span class="g"># tests 43</span>
+  <span class="g"># pass 43</span>
   <span class="g"># fail 0</span>
+  <span class="g">site/index.html loads nothing external; 4 outbound hyperlink(s) allowed</span>
+
+<span class="c"># 测量工具：3 个任务、重放校验，同样零凭据</span>
+<span class="a">$</span> npm run eval -- --scripted --verify-replay
 
 <span class="c"># 列出 profile</span>
 <span class="a">$</span> npm run k9999 -- --list
@@ -854,7 +897,7 @@
 	<div class="wrap">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 2 packages · 3 tools · 18 tests · 4 specs</span>
+		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 43 tests · 4 specs</span>
 	</div>
 </footer>
 
