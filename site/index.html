@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>K9999 Agent Harness</title>
-<meta name="description" content="在 pi-agent-core 之上组装的 Agent Harness。内核永不阻塞等人，决策分层，不可逆设闸，每一步可测量。">
+<meta name="description" content="K9999 Agent Harness —— 永不阻塞，先测量。在 pi-agent-core 之上组装你自己的 Agent Harness：内核永不阻塞等人，决策分层且可选，不可逆设闸，每一步都可测量。">
 <style>
 	:root {
 		--bg: #08090b;
@@ -111,24 +111,32 @@
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--dim);
-		margin: 0 0 26px;
+		margin: 0 0 22px;
 	}
 
 	h1 {
 		margin: 0;
-		font-size: clamp(36px, 5.8vw, 62px);
-		line-height: 1.06;
-		letter-spacing: -0.035em;
+		font-size: clamp(42px, 7.4vw, 84px);
+		line-height: 1.02;
+		letter-spacing: -0.042em;
 		font-weight: 650;
 	}
 
 	h1 .thin { color: var(--dim); font-weight: 300; }
 
-	.lede { margin: 26px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
+	.kicknote {
+		margin: 20px 0 0;
+		font-size: 17px;
+		line-height: 1.6;
+		color: var(--muted);
+		max-width: 660px;
+	}
+
+	.lede { margin: 20px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
 	.lede strong { color: var(--text); font-weight: 600; }
 
 	.slogan {
-		margin: 24px 0 0;
+		margin: 22px 0 0;
 		font-size: clamp(19px, 2.3vw, 24px);
 		font-weight: 600;
 		letter-spacing: -0.012em;
@@ -374,7 +382,8 @@
 
 	<div class="hero">
 		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
-		<h1>在 pi-agent-core 之上<br><span class="thin">组装你自己的 Agent Harness</span></h1>
+		<h1>K9999<br><span class="thin">Agent Harness</span></h1>
+		<p class="kicknote">在 pi-agent-core 之上，组装你自己的 Agent Harness。</p>
 		<p class="slogan">永不阻塞，先测量<span class="en">Never blocks. Measures first.</span></p>
 		<p class="lede">
 			<strong>建立在 Pi 之上</strong> —— 感谢它的作者把 Agent 内核、模型层和终端渲染做成了可复用的库，而不是一个应用。
