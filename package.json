@@ -17,7 +17,7 @@
 		"eval:scripts": "node packages/eval/scripts/build-task-scripts.mjs",
 		"typecheck": "tsc --noEmit",
 		"test": "node --test \"packages/*/test/*.test.ts\"",
-		"check:site": "node scripts/check-site.mjs site/index.html",
+		"check:site": "node scripts/check-site.mjs site",
 		"check": "npm run typecheck && npm run test && npm run check:site",
 		"pdf": "playwright pdf site/index.html k9999.pdf"
 	},

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="K9999">
+	<title>K9999 mark</title>
+	<!--
+		The compact mark: the same square and the same amber K, without the four
+		nines. Below roughly 32px the numerals inside the primary lockup stop
+		being read and start being texture, so the mark carries the identity and
+		the wordmark beside it carries the name.
+	-->
+	<rect width="512" height="512" rx="64" fill="#0f1114"/>
+	<rect x="3" y="3" width="506" height="506" rx="61" fill="none" stroke="#2b323a" stroke-width="3"/>
+	<!--
+		y is the baseline, not the centre. A monospace cap height is about 0.7em,
+		so a baseline of 378 puts the K's optical centre on the canvas centre at
+		256. Centring the em box instead leaves the glyph sitting high.
+	-->
+	<text
+		x="256"
+		y="378"
+		text-anchor="middle"
+		font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace"
+		font-size="348"
+		font-weight="700"
+		fill="#f0a730"
+	>K</text>
+</svg>

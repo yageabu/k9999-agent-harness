@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>K9999 Agent Harness</title>
+<link rel="icon" type="image/svg+xml" href="mark.svg">
 <meta name="description" content="K9999 Agent Harness —— 永不阻塞，先测量。在 pi-agent-core 之上组装你自己的 Agent Harness：内核永不阻塞等人，决策分层且可选，不可逆设闸，每一步都可测量。">
 <style>
 	:root {
@@ -60,14 +61,16 @@
 
 	.brand {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 10px;
 		font-family: var(--mono);
 		font-weight: 600;
 		letter-spacing: -0.01em;
 	}
 
-	.brand .mark { color: var(--amber); }
+	.brand .logo { display: block; width: 26px; height: 26px; flex: none; }
+
+	.brand .name { color: var(--amber); }
 
 	.brand .sub {
 		color: var(--dim);
@@ -104,6 +107,8 @@
 	/* ---------- hero ---------- */
 
 	.hero { padding: 88px 0 66px; border-bottom: 1px solid var(--line); }
+
+	.hero-logo { display: block; width: 76px; height: 76px; margin-bottom: 26px; }
 
 	.eyebrow {
 		font-family: var(--mono);
@@ -339,7 +344,8 @@
 	/* ---------- footer ---------- */
 
 	footer { padding: 52px 0 68px; color: var(--dim); font-size: 13.5px; }
-	footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline; }
+	footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+	footer .logo { display: block; width: 34px; height: 34px; flex: none; }
 	footer .mono { font-size: 12.5px; }
 
 	/* A sticky header overlaps content in full-page screenshots and in PDF
@@ -364,7 +370,8 @@
 <header>
 	<div class="wrap bar">
 		<div class="brand">
-			<span class="mark">K9999</span>
+			<img class="logo" src="mark.svg" alt="" width="26" height="26">
+			<span class="name">K9999</span>
 			<span class="sub">Agent Harness</span>
 		</div>
 		<nav>
@@ -381,6 +388,7 @@
 <div class="wrap">
 
 	<div class="hero">
+		<img class="hero-logo" src="logo.svg" alt="K9999" width="76" height="76">
 		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
 		<h1>K9999<br><span class="thin">Agent Harness</span></h1>
 		<p class="kicknote">在 pi-agent-core 之上，组装你自己的 Agent Harness。</p>
@@ -969,6 +977,7 @@
 
 <footer>
 	<div class="wrap">
+		<img class="logo" src="logo.svg" alt="" width="34" height="34">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
 		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 43 tests · 5 specs</span>

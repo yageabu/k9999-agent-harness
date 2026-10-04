@@ -29,7 +29,7 @@ jobs:
       # here, because a CDN link added later would fail silently in a browser
       # and only show up as a slow, half-styled page.
       - name: Reject external resources
-        run: node scripts/check-site.mjs site/index.html
+        run: node scripts/check-site.mjs site
 
       - uses: actions/configure-pages@v6
 

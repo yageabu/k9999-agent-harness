@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="K9999">
+	<title>K9999</title>
+	<rect width="512" height="512" rx="64" fill="#0f1114"/>
+	<rect x="3" y="3" width="506" height="506" rx="61" fill="none" stroke="#2b323a" stroke-width="3"/>
+	<text
+		x="256"
+		y="270"
+		text-anchor="middle"
+		font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace"
+		font-size="238"
+		font-weight="700"
+		fill="#f0a730"
+	>K</text>
+	<line x1="104" y1="322" x2="408" y2="322" stroke="#2b323a" stroke-width="3"/>
+	<!--
+		letter-spacing adds its gap after the last glyph as well, so the advance
+		box is one gap wider than the ink. text-anchor centres the box, which
+		leaves the ink half a gap to the left. x is offset by half the gap.
+	-->
+	<text
+		x="261"
+		y="424"
+		text-anchor="middle"
+		font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace"
+		font-size="96"
+		font-weight="500"
+		letter-spacing="10"
+		fill="#e7e9ec"
+	>9999</text>
+</svg>

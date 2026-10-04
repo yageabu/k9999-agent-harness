@@ -67,10 +67,23 @@ profiles/<id>/          one agent type per directory
 skills/<name>/SKILL.md  long-form knowledge, advertised but loaded on demand
 docs/                   decisions, specs, and writing rules
 scripts/                repository checks
-site/                   the product page, published to GitHub Pages
+site/                   the product page and the logo, published to GitHub Pages
 ```
 
 `packages/core` never imports `packages/cli`. The CLI owns every decision about how an event looks; the core owns every decision about what an event means. `packages/eval` depends on `packages/core` and is depended on by nothing.
+
+### Logo
+
+Two drawings, one visual language:
+
+| File | Use |
+|---|---|
+| `site/logo.svg` | The lockup: the square, an amber `K`, and four nines. 48px and up |
+| `site/mark.svg` | The compact mark: the same square and `K`, without the numerals. The favicon and anything below 48px |
+
+The numerals stop being read and start being texture below roughly 48px, so the mark carries the identity there and the wordmark beside it carries the name. Both share the square, the border, and the amber, so they read as one mark at two sizes.
+
+The `.png` files beside them are 512px renders of the same two drawings, for places that will not take an SVG — an avatar, a chat client, a slide. Regenerate them by opening the `.svg` in a browser and screenshotting at 512 by 512.
 
 ## How a run is assembled
 
@@ -92,7 +105,8 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 - [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: five specs, one of them building.
 - [`docs/decisions.md`](docs/decisions.md) — fourteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
-- [`site/index.html`](site/index.html) — the product page. One self-contained file, no external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if the page ever references an external resource. Open it directly, or export a PDF with `playwright pdf site/index.html k9999.pdf`.
+- [`site/index.html`](site/index.html) — the product page. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
+- [`site/logo.svg`](site/logo.svg) and [`site/mark.svg`](site/mark.svg) — the logo, in two sizes of one design
 - [`AGENTS.md`](AGENTS.md) — conventions for an agent working in this repository
 
 ## Status
