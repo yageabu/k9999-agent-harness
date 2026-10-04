@@ -1,0 +1,29 @@
+{
+	"name": "k9999-agent-harness",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "An agent harness assembled on top of @earendil-works/pi-agent-core.",
+	"license": "MIT",
+	"workspaces": [
+		"packages/*"
+	],
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"scripts": {
+		"k9999": "node packages/cli/src/index.ts",
+		"typecheck": "tsc --noEmit",
+		"test": "node --test \"packages/*/test/*.test.ts\"",
+		"check": "npm run typecheck && npm run test"
+	},
+	"devDependencies": {
+		"@types/node": "^22.18.0",
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@earendil-works/pi-agent-core": "^1.0.2",
+		"@earendil-works/pi-ai": "^1.0.2",
+		"typebox": "^1.3.27"
+	}
+}

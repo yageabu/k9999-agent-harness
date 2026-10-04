@@ -1,0 +1,9 @@
+# Normalize to LF in the repository and in the working tree.
+# The project targets Node on Linux; CRLF in source files is never wanted.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.ico binary

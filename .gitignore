@@ -1,0 +1,14 @@
+node_modules/
+dist/
+lib/
+*.tsbuildinfo
+
+# scratch
+.artifacts/
+tmp/
+*.log
+
+# sessions and local state
+.k9999/
+.env
+.env.local

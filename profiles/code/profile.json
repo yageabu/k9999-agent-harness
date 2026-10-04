@@ -1,0 +1,6 @@
+{
+	"name": "Code Agent",
+	"model": "deepseek/deepseek-flash",
+	"thinkingLevel": "medium",
+	"tools": ["read", "bash", "edit"]
+}

@@ -1,0 +1,7 @@
+{
+	"name": "Data Analysis Agent",
+	"model": "deepseek/deepseek-v4-pro",
+	"thinkingLevel": "high",
+	"tools": ["read", "bash"],
+	"skills": []
+}
