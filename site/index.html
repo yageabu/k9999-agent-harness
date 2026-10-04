@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K9999 Agent Harness</title>
+<meta name="description" content="在 pi-agent-core 之上组装的 Agent Harness。文件即 profile，决策有实测依据。">
+<style>
+	:root {
+		--bg: #08090b;
+		--panel: #0f1114;
+		--panel-2: #14171b;
+		--line: #1f2429;
+		--line-soft: #171b1f;
+		--text: #e7e9ec;
+		--muted: #878e96;
+		--dim: #5b6269;
+		--amber: #f0a730;
+		--green: #58c98a;
+		--red: #e06b5f;
+		--sans: "Inter", "Helvetica Neue", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+		--mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", Consolas, "Microsoft YaHei Mono", monospace;
+		--wrap: 1080px;
+	}
+
+	* { box-sizing: border-box; }
+
+	html { -webkit-text-size-adjust: 100%; }
+
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--text);
+		font-family: var(--sans);
+		font-size: 16px;
+		line-height: 1.7;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 28px; }
+
+	a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+	a:hover { border-bottom-color: var(--amber); }
+
+	code, .mono, kbd { font-family: var(--mono); font-variant-ligatures: none; }
+
+	/* ---------- header ---------- */
+
+	header {
+		border-bottom: 1px solid var(--line);
+		position: sticky;
+		top: 0;
+		background: rgba(8, 9, 11, 0.92);
+		backdrop-filter: blur(8px);
+		z-index: 10;
+	}
+
+	.bar {
+		display: flex;
+		align-items: center;
+		gap: 20px;
+		height: 58px;
+	}
+
+	.brand {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		font-family: var(--mono);
+		font-weight: 600;
+		letter-spacing: -0.01em;
+	}
+
+	.brand .mark {
+		color: var(--amber);
+	}
+
+	.brand .sub {
+		color: var(--dim);
+		font-size: 12px;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.bar nav {
+		margin-left: auto;
+		display: flex;
+		gap: 22px;
+		font-size: 13.5px;
+		color: var(--muted);
+	}
+
+	.bar nav a { border: none; color: var(--muted); }
+	.bar nav a:hover { color: var(--text); }
+
+	/* ---------- hero ---------- */
+
+	.hero { padding: 92px 0 72px; border-bottom: 1px solid var(--line); }
+
+	.eyebrow {
+		font-family: var(--mono);
+		font-size: 12px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--dim);
+		margin: 0 0 26px;
+	}
+
+	h1 {
+		margin: 0;
+		font-size: clamp(38px, 6.2vw, 66px);
+		line-height: 1.06;
+		letter-spacing: -0.035em;
+		font-weight: 650;
+	}
+
+	h1 .thin { color: var(--dim); font-weight: 300; }
+
+	.lede {
+		margin: 30px 0 0;
+		max-width: 660px;
+		font-size: 19px;
+		line-height: 1.72;
+		color: #c3c8ce;
+	}
+
+	.lede strong { color: var(--text); font-weight: 600; }
+
+	.hero-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		margin-top: 38px;
+	}
+
+	.btn {
+		font-family: var(--mono);
+		font-size: 13.5px;
+		padding: 10px 18px;
+		border: 1px solid var(--line);
+		background: var(--panel);
+		color: var(--text);
+		border-radius: 3px;
+		display: inline-flex;
+		align-items: center;
+		gap: 9px;
+	}
+
+	.btn.primary {
+		background: var(--amber);
+		border-color: var(--amber);
+		color: #14100a;
+		font-weight: 600;
+	}
+
+	.btn .tick { color: var(--green); }
+	.btn.primary .tick { color: #14100a; }
+
+	/* ---------- sections ---------- */
+
+	section { padding: 76px 0; border-bottom: 1px solid var(--line); }
+
+	.sec-head { margin-bottom: 40px; }
+
+	.sec-num {
+		font-family: var(--mono);
+		font-size: 12px;
+		color: var(--dim);
+		letter-spacing: 0.1em;
+	}
+
+	h2 {
+		margin: 12px 0 0;
+		font-size: 29px;
+		line-height: 1.24;
+		letter-spacing: -0.022em;
+		font-weight: 620;
+	}
+
+	.sec-head p { margin: 14px 0 0; max-width: 680px; color: var(--muted); font-size: 16.5px; }
+
+	/* ---------- panels ---------- */
+
+	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+	.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+
+	.cell { background: var(--panel); padding: 26px 24px; }
+
+	.cell h3 {
+		margin: 0 0 10px;
+		font-family: var(--mono);
+		font-size: 13px;
+		letter-spacing: 0.04em;
+		color: var(--amber);
+		font-weight: 600;
+	}
+
+	.cell p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.66; }
+
+	.cell .kpi {
+		font-family: var(--mono);
+		font-size: 34px;
+		letter-spacing: -0.03em;
+		color: var(--text);
+		display: block;
+		margin-bottom: 6px;
+		line-height: 1.1;
+	}
+
+	.cell .kpi small { font-size: 14px; color: var(--muted); letter-spacing: 0; }
+
+	/* ---------- code block ---------- */
+
+	pre {
+		margin: 0;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		padding: 22px 24px;
+		overflow-x: auto;
+		font-size: 13.5px;
+		line-height: 1.78;
+		color: #ccd2d8;
+	}
+
+	pre .c { color: var(--dim); }
+	pre .a { color: var(--amber); }
+	pre .g { color: var(--green); }
+	pre .r { color: var(--red); }
+	pre .m { color: #7f8b96; }
+
+	.term-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 11px 14px;
+		border: 1px solid var(--line);
+		border-bottom: none;
+		border-radius: 4px 4px 0 0;
+		background: var(--panel-2);
+		font-family: var(--mono);
+		font-size: 12px;
+		color: var(--dim);
+	}
+
+	.term-head .dot { width: 9px; height: 9px; border-radius: 50%; background: #2a3038; }
+	.term-head .dot.on { background: var(--amber); }
+	.term-head span.path { margin-left: 8px; }
+	.term-wrap pre { border-radius: 0 0 4px 4px; }
+
+	/* ---------- tables ---------- */
+
+	.table-scroll { overflow-x: auto; }
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 14.5px;
+	}
+
+	th, td {
+		text-align: left;
+		padding: 13px 16px;
+		border-bottom: 1px solid var(--line-soft);
+	}
+
+	thead th {
+		font-family: var(--mono);
+		font-size: 11.5px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--dim);
+		font-weight: 500;
+		border-bottom: 1px solid var(--line);
+		white-space: nowrap;
+	}
+
+	tbody tr:last-child td { border-bottom: none; }
+
+	td.num, th.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+	td.win { color: var(--green); }
+	td.lose { color: var(--dim); }
+
+	.table-panel { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); overflow: hidden; }
+
+	.table-note { margin: 14px 0 0; font-size: 13.5px; color: var(--dim); }
+
+	/* ---------- rules list ---------- */
+
+	ol.rules { counter-reset: r; list-style: none; margin: 0; padding: 0; }
+
+	ol.rules li {
+		counter-increment: r;
+		display: grid;
+		grid-template-columns: 46px 1fr;
+		gap: 4px 16px;
+		padding: 18px 0;
+		border-bottom: 1px solid var(--line-soft);
+	}
+
+	ol.rules li:last-child { border-bottom: none; }
+
+	ol.rules li::before {
+		content: counter(r, decimal-leading-zero);
+		font-family: var(--mono);
+		font-size: 12.5px;
+		color: var(--dim);
+		padding-top: 3px;
+	}
+
+	ol.rules b { display: block; font-weight: 600; margin-bottom: 3px; }
+	ol.rules span { color: var(--muted); font-size: 15px; }
+	ol.rules em { font-style: normal; color: var(--amber); font-family: var(--mono); font-size: 13.5px; }
+
+	/* ---------- gaps ---------- */
+
+	.gaps { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+	.gap-row { background: var(--panel); padding: 20px 24px; display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: baseline; }
+	.gap-row .tag { font-family: var(--mono); font-size: 12.5px; color: var(--red); }
+	.gap-row .tag.done { color: var(--green); }
+	.gap-row p { margin: 0; color: var(--muted); font-size: 15px; }
+
+	/* ---------- footer ---------- */
+
+	footer { padding: 54px 0 70px; color: var(--dim); font-size: 13.5px; }
+	footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline; }
+	footer .mono { font-size: 12.5px; }
+
+	/* A sticky header overlaps content in full-page screenshots and in PDF
+	   export, because neither scrolls the page. */
+	@media print {
+		header { position: static; backdrop-filter: none; }
+		section { break-inside: avoid; }
+	}
+
+	@media (max-width: 860px) {
+		.grid-3, .grid-2 { grid-template-columns: 1fr; }
+		.bar nav { display: none; }
+		.hero { padding: 62px 0 52px; }
+		section { padding: 58px 0; }
+		.gap-row { grid-template-columns: 1fr; gap: 8px; }
+		h2 { font-size: 24px; }
+	}
+</style>
+</head>
+<body>
+
+<header>
+	<div class="wrap bar">
+		<div class="brand">
+			<span class="mark">K9999</span>
+			<span class="sub">Agent Harness</span>
+		</div>
+		<nav>
+			<a href="#why">为什么</a>
+			<a href="#arch">架构</a>
+			<a href="#profiles">Profile</a>
+			<a href="#evidence">实测</a>
+			<a href="#start">开始</a>
+		</nav>
+	</div>
+</header>
+
+<div class="wrap">
+
+	<div class="hero">
+		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
+		<h1>在 pi-agent-core 之上<br><span class="thin">组装你自己的 Agent Harness</span></h1>
+		<p class="lede">
+			不是 Pi 的 fork，也不是 Cordis 应用。内核、模型层、provider 覆盖来自上游；
+			<strong>profile、prompt 组装、工具注册表、CLI 全部归你所有</strong>。
+			两条命令跑起来，不需要 API key 就能跑完 18 个测试。
+		</p>
+		<div class="hero-actions">
+			<span class="btn primary"><span class="tick">$</span> npm run check</span>
+			<span class="btn"><span class="tick">✓</span> 18 tests · 0 credentials</span>
+			<span class="btn">2 packages · 3 tools</span>
+		</div>
+	</div>
+
+	<section id="why">
+		<div class="sec-head">
+			<p class="sec-num">01 / WHY</p>
+			<h2>三个数字，决定架构</h2>
+			<p>启动延迟和安装体积都是在这台机器上实测的，不是估算。决策写成 ADR，每条都标注了代价和重新考虑的触发条件。</p>
+		</div>
+		<div class="grid-3">
+			<div class="cell">
+				<span class="kpi">10<small> ms</small></span>
+				<h3>裸 RUST 二进制</h3>
+				<p>Codex 的原生二进制启动只要 10ms。看起来值得为它换语言。</p>
+			</div>
+			<div class="cell">
+				<span class="kpi">465<small> ms</small></span>
+				<h3>走 NPM 之后</h3>
+				<p>同一个二进制经 npm 的 Node 壳启动要 465ms，比 Pi 的 415ms 还慢。</p>
+			</div>
+			<div class="cell">
+				<span class="kpi">309<small> MB</small></span>
+				<h3>换来的安装体积</h3>
+				<p>Codex 装 309MB，Pi 装 21MB。npm 分发路径把内核优势全部吃掉。</p>
+			</div>
+		</div>
+		<p class="table-note">
+			所以 Rust 在这个项目里是叶子，不是核心：只在 OS 级沙箱、进程树与 PTY 控制、CPU 密集任务这三件事上引入 native addon，不引入第二套核心和协议边界。
+		</p>
+	</section>
+
+	<section id="arch">
+		<div class="sec-head">
+			<p class="sec-num">02 / ARCHITECTURE</p>
+			<h2>一个函数就是全部组装</h2>
+			<p>没有 DI 容器，没有配置语法，没有隐藏接线。<code>createHarness()</code> 是唯一的组合点。</p>
+		</div>
+		<div class="term-wrap">
+			<div class="term-head">
+				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
+				<span class="path">运行时组装路径</span>
+			</div>
+<pre>
+<span class="c">profiles/code/</span>                    <span class="c">packages/core/</span>              <span class="c">packages/cli/</span>
+
+  profile.json <span class="a">──────┐</span>
+   <span class="m">tools: [read,bash,edit]</span>   <span class="a">┌──▶</span> <span class="g">createHarness()</span> <span class="a">──▶</span> <span class="g">Agent</span> <span class="a">──▶</span> <span class="g">renderer</span>
+   <span class="m">thinkingLevel: medium</span>     <span class="a">│</span>         <span class="a">│</span>              <span class="a">│</span>       <span class="m">text_delta</span>
+  system.md <span class="a">────────┘</span>         <span class="a">│</span>    <span class="a">┌────┴─────┐</span>        <span class="a">│</span>       <span class="m">tool 事件</span>
+   <span class="m">行为准则 + 8 条输出规则</span>      <span class="a">│</span>    <span class="a">▼</span>          <span class="a">▼</span>        <span class="a">│</span>
+                                <span class="a">│</span>  <span class="g">TOOL_FACTORIES</span>  <span class="g">providerFactory</span>
+                                <span class="a">│</span>  <span class="m">read</span>            <span class="m">deepseek</span>
+                                <span class="a">│</span>  <span class="m">bash</span>            <span class="m">(一处 switch)</span>
+                                <span class="a">│</span>  <span class="m">edit</span>
+                                <span class="a">└──</span> <span class="g">buildSystemPrompt()</span>
+                                     <span class="c">1. system.md（作者文本，{{cwd}} 插值）</span>
+                                     <span class="c">2. ## Available tools（自动生成）</span>
+                                     <span class="c">3. ## Skills（自动生成）</span>
+                                     <span class="c">4. Current working directory</span>
+</pre>
+		</div>
+		<div class="grid-3" style="margin-top:28px">
+			<div class="cell">
+				<h3>PROFILE 是唯一机制</h3>
+				<p>Agent 类型的全部差异收敛到一个目录里的两个文件，可在一份 diff 里 review。没有条件分支 prompt，没有散落在 shell history 里的 flag。</p>
+			</div>
+			<div class="cell">
+				<h3>名字 → 实现单点映射</h3>
+				<p>profile 用字符串声明工具。未知名字在加载时报错并列出合法值，而不是静默地少跑几个工具。</p>
+			</div>
+			<div class="cell">
+				<h3>层有方向</h3>
+				<p><code>packages/core</code> 不 import <code>packages/cli</code>。事件的语义归 core，事件长什么样归 CLI。</p>
+			</div>
+		</div>
+	</section>
+
+	<section id="profiles">
+		<div class="sec-head">
+			<p class="sec-num">03 / PROFILES</p>
+			<h2>两种 Agent，两个目录</h2>
+			<p><code>k9999 -p data</code> 就是全部调用方式。每个 profile 的 prompt 里都带同一套 8 条输出规则。</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th>Profile</th><th>模型</th><th>思考等级</th><th>工具</th><th>设计意图</th></tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="mono">code</td>
+						<td class="mono">deepseek-flash</td>
+						<td class="mono">medium</td>
+						<td class="mono">read · bash · edit</td>
+						<td>最小改动 + 必须给出验证命令和实际输出</td>
+					</tr>
+					<tr>
+						<td class="mono">data</td>
+						<td class="mono">deepseek-v4-pro</td>
+						<td class="mono">high</td>
+						<td class="mono">read · bash</td>
+						<td><span class="win">刻意不给 edit</span>：数据 Agent 用 bash 写脚本到文件，改你仓库是另一个尚未做出的决定</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="table-note">
+			有测试专门卡住"data profile 不得暴露 edit/write"。约束写进测试，才不会在后续重构里悄悄消失。
+		</p>
+	</section>
+
+	<section id="evidence">
+		<div class="sec-head">
+			<p class="sec-num">04 / EVIDENCE</p>
+			<h2>输出规则来自实测，不是直觉</h2>
+			<p>ASD-STE100 是航空文档的受控语言，53 条规则加约 900 词的受控词典。把它当指令注入确实有效，但同一份研究自己的数据说明了更好的做法。</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr>
+						<th>条件</th>
+						<th class="num">词数</th>
+						<th class="num">句数</th>
+						<th class="num">破折号</th>
+						<th class="num">粗体</th>
+						<th class="num">标题</th>
+						<th class="num">列表项</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>不加指令</td>
+						<td class="num lose">249</td><td class="num lose">18.9</td><td class="num lose">32</td>
+						<td class="num lose">52</td><td class="num lose">19</td><td class="num lose">35</td>
+					</tr>
+					<tr>
+						<td>完整 STE skill</td>
+						<td class="num">171</td><td class="num">13.4</td><td class="num">17</td>
+						<td class="num">24</td><td class="num">3</td><td class="num">22</td>
+					</tr>
+					<tr>
+						<td><strong>8 行提示</strong></td>
+						<td class="num win">150</td><td class="num win">5.8</td><td class="num win">2</td>
+						<td class="num win">0</td><td class="num win">0</td><td class="num win">0</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="table-note">
+			原作者的结论：skill 只在自己的 linter 上赢，五十多条规则稀释了真正起作用的那五条。完整规则还带一个漏洞——STE 豁免代码块和列表项的句长限制，模型于是把所有东西都做成列表项。<br>
+			结论进 ADR-0007：提取规则，不引用标准，不附带词典。完整的数据和自测方法在 <code>docs/writing-rules.md</code>。
+		</p>
+
+		<div class="sec-head" style="margin-top:64px">
+			<h2>八条规则</h2>
+			<p>规则 1–5 来自 STE。规则 6–8 不是——它们管的是"交付形态"，而任何受控语言都对此一言不发，却贡献了大部分压缩量。</p>
+		</div>
+		<ol class="rules">
+			<li><span><b>句长上限</b><span>指令句 20 词，描述句 25 词。回答前数一遍最长的三句，超了就拆开。</span></span></li>
+			<li><span><b>条件在前，动作在后</b><span><em>If the test fails, read the log.</em></span></span></li>
+			<li><span><b>一词一义</b><span>整篇不得为同一个概念轮换同义词。把一件事说三遍是最大的长度浪费。</span></span></li>
+			<li><span><b>禁破折号与分号</b><span>破折号藏起了两个陈述之间的关系。要么点明关系（because / but / for example），要么写成两句。</span></span></li>
+			<li><span><b>删掉不承载事实的词</b><span><em>simply · seamlessly · robust · powerful · leverage · in order to</em>。替换：utilize→use，prior to→before。</span></span></li>
+			<li><span><b>固定的交付形态</b><span>散文。超过三个部分才用标题，且绝不以标题开头，结尾不加总结。</span></span></li>
+			<li><span><b>无开场白、无结束语</b><span>不复述问题，不总结刚说过的话，不问"还需要更多吗"。</span></span></li>
+			<li><span><b>不编造具体信息</b><span>来源没有给数字或原因，就保持概括陈述。</span></span></li>
+		</ol>
+	</section>
+
+	<section id="start">
+		<div class="sec-head">
+			<p class="sec-num">05 / START</p>
+			<h2>两条命令，零凭据验证</h2>
+			<p>测试用脚本化 provider 驱动，整条链路——模型请求、工具执行、二次请求、回合结束——都不需要网络。</p>
+		</div>
+		<div class="term-wrap">
+			<div class="term-head">
+				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
+				<span class="path">bash</span>
+			</div>
+<pre><span class="c"># 安装并验证：typecheck + 18 个测试，不需要 API key</span>
+<span class="a">$</span> npm install
+<span class="a">$</span> npm run check
+  <span class="g"># tests 18</span>
+  <span class="g"># pass 18</span>
+  <span class="g"># fail 0</span>
+
+<span class="c"># 列出 profile</span>
+<span class="a">$</span> npm run k9999 -- --list
+  code         Code Agent
+  data         Data Analysis Agent
+
+<span class="c"># 交互，或单次运行</span>
+<span class="a">$</span> npm run k9999 -- -p data
+<span class="a">$</span> DEEPSEEK_API_KEY=... npm run k9999 -- --print "prompt.ts 的组装顺序是什么？"
+
+<span class="c"># 失败是响亮的，不是静默的</span>
+<span class="a">$</span> npm run k9999 -- --print "hi"
+  <span class="r">Provider is not configured: deepseek</span>
+  <span class="m">exit 1</span>
+</pre>
+		</div>
+	</section>
+
+	<section id="gaps">
+		<div class="sec-head">
+			<p class="sec-num">06 / STATUS</p>
+			<h2>已经能用的，和还没做的</h2>
+			<p>缺口写在文档里，不藏在路线图里。两条缺口各有对应 ADR 记录理由。</p>
+		</div>
+		<div class="gaps">
+			<div class="gap-row">
+				<span class="tag done">已交付</span>
+				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 18 个测试</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag">DEFERRED</span>
+				<p><b>MCP</b> —— ADR-0008 明确推迟。当前路径是把 MCP 工具写成普通 tool 模块注册进 <code>TOOL_FACTORIES</code>，不为它先建沙箱和发现层。</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag">半成品</span>
+				<p><b>技能调用</b> —— 声明的技能会解析、校验、渲染进系统提示，但读取靠 Agent 自己调 <code>read</code>，尚无技能调用工具。</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag done">有意为之</span>
+				<p><b>没有扩展生态</b> —— 没有可借用的 <code>ExtensionAPI</code>。Pi 扩展不等于 K9999 扩展，这是自己拥有上层的代价，写在 ADR-0001。</p>
+			</div>
+		</div>
+	</section>
+
+	<section id="decisions">
+		<div class="sec-head">
+			<p class="sec-num">07 / DECISIONS</p>
+			<h2>八条架构决策记录</h2>
+			<p>每条都写了选了什么、否决了什么、代价是什么、什么条件下重新考虑。决策改变时修改记录，而不是删除它。</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th>#</th><th>决策</th><th>否决的方案</th></tr>
+				</thead>
+				<tbody>
+					<tr><td class="mono">0001</td><td>基于 <code>pi-agent-core</code> 构建</td><td>fork Pi；或薄层依赖整个 Pi 应用</td></tr>
+					<tr><td class="mono">0002</td><td>不采用 Cordis</td><td>现在引入 DI 容器与配置语法插件树</td></tr>
+					<tr><td class="mono">0003</td><td>Rust 当叶子，不当核心</td><td>Rust 内核 + TypeScript UI + 协议边界</td></tr>
+					<tr><td class="mono">0004</td><td>Profile 是唯一的 Agent 类型机制</td><td>CLI flag；单 prompt 内条件分段</td></tr>
+					<tr><td class="mono">0005</td><td>Prompt 组装顺序是契约</td><td>把 <code>{{tools}}</code> 插值交给作者自由摆放</td></tr>
+					<tr><td class="mono">0006</td><td>工具经单一注册表按名寻址</td><td>未知工具名降级为警告</td></tr>
+					<tr><td class="mono">0007</td><td>8 条规则，不用 ASD-STE100</td><td>注入完整标准并照搬受控词典</td></tr>
+					<tr><td class="mono">0008</td><td>暂不支持 MCP</td><td>直接声明全部 MCP 工具；或先建沙箱发现层</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</section>
+
+</div>
+
+<footer>
+	<div class="wrap">
+		<span class="mono">K9999 Agent Harness</span>
+		<span>MIT License</span>
+		<span>TypeScript · Node ≥ 22.19 · 2 packages · 3 tools · 18 tests</span>
+	</div>
+</footer>
+
+</body>
+</html>
