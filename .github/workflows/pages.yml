@@ -28,19 +28,8 @@ jobs:
       # The page is only useful offline if it fetches nothing. Enforce that
       # here, because a CDN link added later would fail silently in a browser
       # and only show up as a slow, half-styled page.
-      - name: Reject external requests
-        run: |
-          node -e '
-            const fs = require("fs");
-            const html = fs.readFileSync("site/index.html", "utf8");
-            const refs = [...html.matchAll(/(?:src|href)\s*=\s*["\x27]((?:https?:)?\/\/[^"\x27]*)/g)].map((m) => m[1]);
-            if (refs.length > 0) {
-              console.error("site/index.html references external resources:");
-              for (const ref of refs) console.error("  " + ref);
-              process.exit(1);
-            }
-            console.log("site/index.html is self-contained");
-          '
+      - name: Reject external resources
+        run: node scripts/check-site.mjs site/index.html
 
       - uses: actions/configure-pages@v6
 

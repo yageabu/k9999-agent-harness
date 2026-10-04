@@ -69,10 +69,17 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Documentation
 
-- [`docs/decisions.md`](docs/decisions.md) — why this shape and not the alternatives
+- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: four specs, none implemented.
+- [`docs/decisions.md`](docs/decisions.md) — twelve decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
 - [`site/index.html`](site/index.html) — the product page. One self-contained file, no external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if the page ever references an external resource. Open it directly, or export a PDF with `playwright pdf site/index.html k9999.pdf`.
 - [`AGENTS.md`](AGENTS.md) — conventions for an agent working in this repository
+
+## Status
+
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, and the CLI. Eighteen tests, no credentials required.
+
+Accepted and unimplemented: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-jev-decision-layer.md), [0004](docs/specs/0004-measurement-and-budget.md). The product page marks the two states separately and gives no figures for the second.
 
 ## License
 

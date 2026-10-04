@@ -15,7 +15,9 @@
 		"k9999": "node packages/cli/src/index.ts",
 		"typecheck": "tsc --noEmit",
 		"test": "node --test \"packages/*/test/*.test.ts\"",
-		"check": "npm run typecheck && npm run test"
+		"check:site": "node scripts/check-site.mjs site/index.html",
+		"check": "npm run typecheck && npm run test && npm run check:site",
+		"pdf": "playwright pdf site/index.html k9999.pdf"
 	},
 	"devDependencies": {
 		"@types/node": "^22.18.0",

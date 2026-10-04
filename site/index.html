@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>K9999 Agent Harness</title>
-<meta name="description" content="在 pi-agent-core 之上组装的 Agent Harness。文件即 profile，决策有实测依据。">
+<meta name="description" content="在 pi-agent-core 之上组装的 Agent Harness。内核永不阻塞等人，决策分层，不可逆设闸，每一步可测量。">
 <style>
 	:root {
 		--bg: #08090b;
@@ -24,7 +24,6 @@
 	}
 
 	* { box-sizing: border-box; }
-
 	html { -webkit-text-size-adjust: 100%; }
 
 	body {
@@ -44,6 +43,7 @@
 	a:hover { border-bottom-color: var(--amber); }
 
 	code, .mono, kbd { font-family: var(--mono); font-variant-ligatures: none; }
+	code { font-size: 0.93em; }
 
 	/* ---------- header ---------- */
 
@@ -56,12 +56,7 @@
 		z-index: 10;
 	}
 
-	.bar {
-		display: flex;
-		align-items: center;
-		gap: 20px;
-		height: 58px;
-	}
+	.bar { display: flex; align-items: center; gap: 20px; height: 58px; }
 
 	.brand {
 		display: flex;
@@ -72,9 +67,7 @@
 		letter-spacing: -0.01em;
 	}
 
-	.brand .mark {
-		color: var(--amber);
-	}
+	.brand .mark { color: var(--amber); }
 
 	.brand .sub {
 		color: var(--dim);
@@ -84,20 +77,32 @@
 		text-transform: uppercase;
 	}
 
-	.bar nav {
-		margin-left: auto;
-		display: flex;
-		gap: 22px;
-		font-size: 13.5px;
-		color: var(--muted);
-	}
-
+	.bar nav { margin-left: auto; display: flex; gap: 22px; font-size: 13.5px; }
 	.bar nav a { border: none; color: var(--muted); }
 	.bar nav a:hover { color: var(--text); }
 
+	/* ---------- chips ---------- */
+
+	.chip {
+		font-family: var(--mono);
+		font-size: 11px;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		padding: 3px 9px;
+		border-radius: 3px;
+		border: 1px solid var(--line);
+		color: var(--dim);
+		display: inline-block;
+		white-space: nowrap;
+	}
+
+	.chip.spec { color: var(--amber); border-color: rgba(240, 167, 48, 0.34); background: rgba(240, 167, 48, 0.07); }
+	.chip.shipped { color: var(--green); border-color: rgba(88, 201, 138, 0.3); background: rgba(88, 201, 138, 0.06); }
+	.chip.reject { color: var(--muted); }
+
 	/* ---------- hero ---------- */
 
-	.hero { padding: 92px 0 72px; border-bottom: 1px solid var(--line); }
+	.hero { padding: 88px 0 66px; border-bottom: 1px solid var(--line); }
 
 	.eyebrow {
 		font-family: var(--mono);
@@ -110,7 +115,7 @@
 
 	h1 {
 		margin: 0;
-		font-size: clamp(38px, 6.2vw, 66px);
+		font-size: clamp(36px, 5.8vw, 62px);
 		line-height: 1.06;
 		letter-spacing: -0.035em;
 		font-weight: 650;
@@ -118,22 +123,10 @@
 
 	h1 .thin { color: var(--dim); font-weight: 300; }
 
-	.lede {
-		margin: 30px 0 0;
-		max-width: 660px;
-		font-size: 19px;
-		line-height: 1.72;
-		color: #c3c8ce;
-	}
-
+	.lede { margin: 30px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
 	.lede strong { color: var(--text); font-weight: 600; }
 
-	.hero-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 12px;
-		margin-top: 38px;
-	}
+	.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
 
 	.btn {
 		font-family: var(--mono);
@@ -148,67 +141,33 @@
 		gap: 9px;
 	}
 
-	.btn.primary {
-		background: var(--amber);
-		border-color: var(--amber);
-		color: #14100a;
-		font-weight: 600;
-	}
-
+	.btn.primary { background: var(--amber); border-color: var(--amber); color: #14100a; font-weight: 600; }
 	.btn .tick { color: var(--green); }
 	.btn.primary .tick { color: #14100a; }
 
 	/* ---------- sections ---------- */
 
-	section { padding: 76px 0; border-bottom: 1px solid var(--line); }
+	section { padding: 72px 0; border-bottom: 1px solid var(--line); }
 
-	.sec-head { margin-bottom: 40px; }
+	.sec-head { margin-bottom: 36px; }
 
-	.sec-num {
-		font-family: var(--mono);
-		font-size: 12px;
-		color: var(--dim);
-		letter-spacing: 0.1em;
-	}
+	.sec-num { font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 0.1em; }
 
-	h2 {
-		margin: 12px 0 0;
-		font-size: 29px;
-		line-height: 1.24;
-		letter-spacing: -0.022em;
-		font-weight: 620;
-	}
+	h2 { margin: 12px 0 0; font-size: 28px; line-height: 1.24; letter-spacing: -0.022em; font-weight: 620; }
 
-	.sec-head p { margin: 14px 0 0; max-width: 680px; color: var(--muted); font-size: 16.5px; }
+	.sec-head p { margin: 14px 0 0; max-width: 690px; color: var(--muted); font-size: 16.5px; }
+
+	.sec-head .chip { margin-bottom: 14px; }
 
 	/* ---------- panels ---------- */
 
 	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 	.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 
-	.cell { background: var(--panel); padding: 26px 24px; }
-
-	.cell h3 {
-		margin: 0 0 10px;
-		font-family: var(--mono);
-		font-size: 13px;
-		letter-spacing: 0.04em;
-		color: var(--amber);
-		font-weight: 600;
-	}
-
+	.cell { background: var(--panel); padding: 24px 22px; }
+	.cell h3 { margin: 0 0 10px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; color: var(--amber); font-weight: 600; }
 	.cell p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.66; }
-
-	.cell .kpi {
-		font-family: var(--mono);
-		font-size: 34px;
-		letter-spacing: -0.03em;
-		color: var(--text);
-		display: block;
-		margin-bottom: 6px;
-		line-height: 1.1;
-	}
-
+	.cell .kpi { font-family: var(--mono); font-size: 33px; letter-spacing: -0.03em; color: var(--text); display: block; margin-bottom: 6px; line-height: 1.1; }
 	.cell .kpi small { font-size: 14px; color: var(--muted); letter-spacing: 0; }
 
 	/* ---------- code block ---------- */
@@ -254,17 +213,9 @@
 
 	.table-scroll { overflow-x: auto; }
 
-	table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 14.5px;
-	}
+	table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 
-	th, td {
-		text-align: left;
-		padding: 13px 16px;
-		border-bottom: 1px solid var(--line-soft);
-	}
+	th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 
 	thead th {
 		font-family: var(--mono);
@@ -278,13 +229,12 @@
 	}
 
 	tbody tr:last-child td { border-bottom: none; }
-
 	td.num, th.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
 	td.win { color: var(--green); }
 	td.lose { color: var(--dim); }
+	td.mono, th.mono { font-family: var(--mono); }
 
 	.table-panel { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); overflow: hidden; }
-
 	.table-note { margin: 14px 0 0; font-size: 13.5px; color: var(--dim); }
 
 	/* ---------- rules list ---------- */
@@ -296,7 +246,7 @@
 		display: grid;
 		grid-template-columns: 46px 1fr;
 		gap: 4px 16px;
-		padding: 18px 0;
+		padding: 17px 0;
 		border-bottom: 1px solid var(--line-soft);
 	}
 
@@ -317,14 +267,27 @@
 	/* ---------- gaps ---------- */
 
 	.gaps { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-	.gap-row { background: var(--panel); padding: 20px 24px; display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: baseline; }
-	.gap-row .tag { font-family: var(--mono); font-size: 12.5px; color: var(--red); }
+	.gap-row { background: var(--panel); padding: 20px 24px; display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: baseline; }
+	.gap-row .tag { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: 0.06em; }
 	.gap-row .tag.done { color: var(--green); }
+	.gap-row .tag.open { color: var(--red); }
 	.gap-row p { margin: 0; color: var(--muted); font-size: 15px; }
+
+	/* ---------- provenance note ---------- */
+
+	.prov {
+		margin: 16px 0 0;
+		padding: 14px 18px;
+		border-left: 2px solid var(--line);
+		color: var(--dim);
+		font-size: 13.5px;
+	}
+
+	.prov b { color: var(--muted); font-weight: 500; }
 
 	/* ---------- footer ---------- */
 
-	footer { padding: 54px 0 70px; color: var(--dim); font-size: 13.5px; }
+	footer { padding: 52px 0 68px; color: var(--dim); font-size: 13.5px; }
 	footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline; }
 	footer .mono { font-size: 12.5px; }
 
@@ -338,10 +301,10 @@
 	@media (max-width: 860px) {
 		.grid-3, .grid-2 { grid-template-columns: 1fr; }
 		.bar nav { display: none; }
-		.hero { padding: 62px 0 52px; }
-		section { padding: 58px 0; }
+		.hero { padding: 60px 0 50px; }
+		section { padding: 54px 0; }
 		.gap-row { grid-template-columns: 1fr; gap: 8px; }
-		h2 { font-size: 24px; }
+		h2 { font-size: 23px; }
 	}
 </style>
 </head>
@@ -354,11 +317,12 @@
 			<span class="sub">Agent Harness</span>
 		</div>
 		<nav>
-			<a href="#why">为什么</a>
-			<a href="#arch">架构</a>
-			<a href="#profiles">Profile</a>
-			<a href="#evidence">实测</a>
-			<a href="#start">开始</a>
+			<a href="#stance-1">不阻塞</a>
+			<a href="#stance-2">决策分层</a>
+			<a href="#stance-3">设闸</a>
+			<a href="#stance-4">测量</a>
+			<a href="#specs">Specs</a>
+			<a href="#status">现状</a>
 		</nav>
 	</div>
 </header>
@@ -369,48 +333,191 @@
 		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
 		<h1>在 pi-agent-core 之上<br><span class="thin">组装你自己的 Agent Harness</span></h1>
 		<p class="lede">
-			不是 Pi 的 fork，也不是 Cordis 应用。内核、模型层、provider 覆盖来自上游；
-			<strong>profile、prompt 组装、工具注册表、CLI 全部归你所有</strong>。
-			两条命令跑起来，不需要 API key 就能跑完 18 个测试。
+			内核、模型层、provider 覆盖来自上游；<strong>profile、prompt 组装、工具注册表、CLI 全部归你所有</strong>。
+			四条立场已经写成可验收的契约，没有一条已实现。
+			这一页会一直标明哪些数字是实测的，哪些东西还不存在。
 		</p>
 		<div class="hero-actions">
 			<span class="btn primary"><span class="tick">$</span> npm run check</span>
 			<span class="btn"><span class="tick">✓</span> 18 tests · 0 credentials</span>
-			<span class="btn">2 packages · 3 tools</span>
+			<span class="btn">4 specs · 0 implemented</span>
 		</div>
 	</div>
 
-	<section id="why">
+	<section id="stance-1">
 		<div class="sec-head">
-			<p class="sec-num">01 / WHY</p>
-			<h2>三个数字，决定架构</h2>
-			<p>启动延迟和安装体积都是在这台机器上实测的，不是估算。决策写成 ADR，每条都标注了代价和重新考虑的触发条件。</p>
+			<span class="chip spec">SPEC 0001 · 已接受 · 未实现</span>
+			<p class="sec-num">01 / STANCE</p>
+			<h2>内核永不阻塞等人</h2>
+			<p>
+				一个用 <code>await</code> 向人提问的内核，只有一个地方能交出答案。
+				这不是任何集成的缺陷，这是 <code>await</code> 的含义。Pi 的微信桥就卡在这里：
+				终端弹出确认，终端前没人，微信侧于是永远等一个不会结束的回合。
+			</p>
 		</div>
 		<div class="grid-3">
 			<div class="cell">
-				<span class="kpi">10<small> ms</small></span>
-				<h3>裸 RUST 二进制</h3>
-				<p>Codex 的原生二进制启动只要 10ms。看起来值得为它换语言。</p>
+				<h3>记录，不是栈帧</h3>
+				<p>每次交互是一条持久记录，所以进程死掉它还在，重启能继续。原生挂起 <code>{ kind: "suspended" }</code>，不是一个挂住的 promise。</p>
 			</div>
 			<div class="cell">
-				<span class="kpi">465<small> ms</small></span>
-				<h3>走 NPM 之后</h3>
-				<p>同一个二进制经 npm 的 Node 壳启动要 465ms，比 Pi 的 415ms 还慢。</p>
+				<h3>任何通道都能答</h3>
+				<p>记录里不包含"是哪个通道问的"。CLI 和微信是平等的两个通道，先答的赢，后到的返回 <code>already_answered</code>，不覆盖。</p>
 			</div>
 			<div class="cell">
-				<span class="kpi">309<small> MB</small></span>
-				<h3>换来的安装体积</h3>
-				<p>Codex 装 309MB，Pi 装 21MB。npm 分发路径把内核优势全部吃掉。</p>
+				<h3>没人答也会结束</h3>
+				<p>没有 deadline 和默认动作的交互不允许构造。没人看的 Agent 挂住，和一个崩掉的 Agent 在外部完全无法区分。</p>
 			</div>
 		</div>
+
+		<div class="sec-head" style="margin:52px 0 22px">
+			<h2 style="font-size:21px">默认动作不是猜一个值</h2>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th>交互</th><th class="mono">默认</th><th>理由</th></tr>
+				</thead>
+				<tbody>
+					<tr><td>不可逆操作的审批</td><td class="mono">deny</td><td>无人值守时的破坏性动作，只有 fail-closed 是安全的</td></tr>
+					<tr><td>Agent 本可从上下文回答的问题</td><td class="mono">proceed_with_assumption</td><td>回合继续，假设写进轨迹</td></tr>
+					<tr><td>只有人能回答的问题</td><td class="mono">stop_and_report</td><td>干净结束并说明原因</td></tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="prov">
+			<b>为什么这是第一条立场而不是"支持微信"：</b>
+			"支持微信"不可测。"内核永不阻塞等人"可测 —— 六个验收标准，其中一条是"测试套件里不允许存在可能挂住的 await"。
+		</p>
+	</section>
+
+	<section id="stance-2">
+		<div class="sec-head">
+			<span class="chip spec">SPEC 0003 · 已接受 · 未实现</span>
+			<p class="sec-num">02 / STANCE</p>
+			<h2>决策分层：判断交给判断模型</h2>
+			<p>
+				每轮里大量的小决策，用前沿模型做是错的工具。问它"这句话是提问还是指令"，
+				花掉一整次往返和一个大 prompt，只换来一个 bit，而且这个 bit 藏在散文里，要解析、可能畸形。
+			</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th class="mono">Jev 问题类型</th><th>返回</th><th>关键点</th></tr>
+				</thead>
+				<tbody>
+					<tr><td class="mono">noul</td><td class="mono">{ noul: 0..1 }</td><td><strong>是概率，不是布尔</strong>。阈值是我们的事</td></tr>
+					<tr><td class="mono">choice</td><td class="mono">{ choice, confidence, probabilities }</td><td>带完整概率分布，不只 argmax</td></tr>
+					<tr><td class="mono">score</td><td class="mono">{ score, confidence, ... }</td><td>score 是期望值，可以是小数</td></tr>
+				</tbody>
+			</table>
+		</div>
 		<p class="table-note">
-			所以 Rust 在这个项目里是叶子，不是核心：只在 OS 级沙箱、进程树与 PTY 控制、CPU 密集任务这三件事上引入 native addon，不引入第二套核心和协议边界。
+			不理解散文、只返回类型化决策，并且每次调用都带自己的 <code>usage</code>。
+			第三列是最要命的那条：它把"判官可能错"从一个风险，变成一个<strong>带可测量错误率的阈值</strong>。
+		</p>
+
+		<div class="sec-head" style="margin:52px 0 22px">
+			<h2 style="font-size:21px">七条规则，取自一份已出货的实现</h2>
+			<p><code>pi-mcp-adapter</code> 已经在用 Jev 做工具检索。这些不是从第一性原理推的，是从它的代码里读的。</p>
+		</div>
+		<ol class="rules">
+			<li><span><b>代码先收窄，决策模型再选</b><span>它的词法排序先把候选压下来，Jev 只在这几个里选。事实交给代码，判断交给模型。</span></span></li>
+			<li><span><b>永远给逃生口</b><span>它的 choice 条件里一定有 <em>none</em>。强制选择返回的是错误答案，不是"没有答案"。</span></span></li>
+			<li><span><b>读整个分布，不只 argmax</b><span>按 <code>probabilities[id]</code> 排序，让近乎平票变得可见，而不是被一个标签盖住。</span></span></li>
+			<li><span><b>优化 fail-open，安全 fail-closed</b><span>超时/限流时它回落到词法检索；同样的故障落在可逆性判定上，必须拒绝。</span></span></li>
+			<li><span><b>上报降级，不隐瞒</b><span>它返回 <code>{ requested: "semantic", used: "lexical", degraded: true, reason }</code>。降级运行的数字和正常运行不可比。</span></span></li>
+			<li><span><b>把响应当不可信输入校验</b><span>精确键集、概率范围、label 必须来自我们给的 criteria。外部服务的回答是输入。</span></span></li>
+			<li><span><b>每次调用对披露负责</b><span>它带 <code>sources</code>，并拒发未被 operator 允许的 server 数据。外部决策 API 会收到 Agent 上下文。</span></span></li>
+		</ol>
+		<p class="prov">
+			<b>不许问 Jev 的事：</b>
+			破折号有没有 → 正则。测试过没过 → 读退出码。文件在不在 → <code>stat</code>。
+			把可判定的事实送去问模型，是拿方差和延迟换零收益。允许问的问题列得很短，要靠加一行"失败模式 + 测试"才会变长。
+		</p>
+	</section>
+
+	<section id="stance-3">
+		<div class="sec-head">
+			<span class="chip spec">SPEC 0002 · 已接受 · 未实现</span>
+			<p class="sec-num">03 / STANCE</p>
+			<h2>不可逆是唯一的闸，不做 Plan 模式</h2>
+			<p>
+				Plan 模式要解决的是"别在理解之前乱改东西"，代价是多一层模式、多一次人工确认，
+				而且它要求人在事情发生<strong>之前</strong>选对。没人记得开，Agent 就照样乱改。
+			</p>
+		</div>
+		<div class="grid-2">
+			<div class="cell">
+				<h3>规划已经就是一个 profile</h3>
+				<p>
+					<code>tools: ["read", "bash"]</code>，没有写工具，就是一个 plan 模式 —— 而且是数据，不是代码路径。
+					<code>data</code> profile 已经这么做了，并且有测试卡住它不能写文件。
+					<strong>想要就写个 profile</strong>，这比"不支持"强，因为它是 profile 抽象的推论，不是例外。
+				</p>
+			</div>
+			<div class="cell">
+				<h3>真正该设闸的轴是不可逆</h3>
+				<p>
+					工具声明自己是 <code>read</code> / <code>reversible</code> / <code>irreversible</code>，内核只在最后一类设闸。
+					仓库里的 <code>edit</code> 用 <code>git checkout</code> 能撤销；<code>rm -rf</code> 不能。
+					<strong>这是属性，不是模式</strong> —— 模式要求人先选对，属性不用。
+				</p>
+			</div>
+		</div>
+		<p class="prov">
+			<b>bash 是诚实的那一格：</b>
+			它的命令在到达之前不可知，所以声明只是<strong>下限</strong>，不是判决。只读白名单（<code>grep</code>、<code>git status</code>）免费且精确，先跑；
+			其余交给决策模型；两者都判不了，就按<strong>不可逆</strong>处理。
+			授权是<strong>按次</strong>的，从不常驻 —— 无人值守系统里的常驻授权，是比它当初要解决的问题活得更久的一个权限。
+		</p>
+	</section>
+
+	<section id="stance-4">
+		<div class="sec-head">
+			<span class="chip spec">SPEC 0004 · 已接受 · 未实现</span>
+			<p class="sec-num">04 / STANCE</p>
+			<h2>先测量，再优化</h2>
+			<p>
+				"省 token 不损失性能"在两个半边都可测之前，不是一句声明。
+				更糟的是，一个缩短 prompt 的改动可能让总成本<strong>上升</strong> ——
+				短而不稳定的前缀会打断 provider 侧的 prompt 缓存，长而稳定的前缀不会。
+			</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th class="mono">指标</th><th>为什么它在表里</th></tr>
+				</thead>
+				<tbody>
+					<tr><td class="mono">inputTokens</td><td>大多数优化瞄准的轴</td></tr>
+					<tr><td class="mono">outputTokens</td><td>输出规则瞄准的轴</td></tr>
+					<tr><td class="mono">deciderTokens</td><td>决策层自己的成本。不记它，"省了 token"永远不可证伪</td></tr>
+					<tr><td class="mono"><strong>turnsToComplete</strong></td><td><strong>"性能不损失"就住在这里</strong>。省了 token 但多花一轮，是净亏</td></tr>
+					<tr><td class="mono">wallMs</td><td>交互通道和无人值守通道对它的估价完全不同</td></tr>
+					<tr><td class="mono">costUSD</td><td>唯一能把上面几项合起来而不掩盖任何取舍的数</td></tr>
+					<tr><td class="mono">degraded</td><td>被测组件当时是否真的在工作。降级运行的数字，和正常运行不可比</td></tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="table-note">
+			<code>degraded</code> 单独占一行。当决策层降级到兜底路径，这次运行量的是兜底路径。
+			把它的成本当成决策层的成本报出去，是一个 eval 最容易骗到自己的方式，
+			而最容易发现它的办法就是记下这个标记，并拒绝跨过它做比较。
+		</p>
+		<p class="prov">
+			<b>成功必须由被测对象之外的东西定义。</b>
+			每个 task 带一个确定性谓词：退出码、文件内容、一个通过的测试。不用模型打分。
+			理由写在 ADR-0007 里：那份研究里，指令集<strong>在自己的 linter 上赢了，在所有读者看得见的指标上全输</strong>。
+			模型评分是同一个陷阱的多步骤版本 —— 评委和被评的对象共享同一个偏见。
 		</p>
 	</section>
 
 	<section id="arch">
 		<div class="sec-head">
-			<p class="sec-num">02 / ARCHITECTURE</p>
+			<span class="chip shipped">已实现 · 有测试</span>
+			<p class="sec-num">05 / ARCHITECTURE</p>
 			<h2>一个函数就是全部组装</h2>
 			<p>没有 DI 容器，没有配置语法，没有隐藏接线。<code>createHarness()</code> 是唯一的组合点。</p>
 		</div>
@@ -452,11 +559,17 @@
 				<p><code>packages/core</code> 不 import <code>packages/cli</code>。事件的语义归 core，事件长什么样归 CLI。</p>
 			</div>
 		</div>
+		<p class="prov">
+			<b>顺序是契约。</b>
+			作者写的文本在前，自动生成的工具与技能列表在后。前面承载更多权重，也更容易命中 prompt 缓存；
+			会随 profile 变动的生成内容放在后面，不污染稳定的前缀。
+		</p>
 	</section>
 
 	<section id="profiles">
 		<div class="sec-head">
-			<p class="sec-num">03 / PROFILES</p>
+			<span class="chip shipped">已实现 · 有测试</span>
+			<p class="sec-num">06 / PROFILES</p>
 			<h2>两种 Agent，两个目录</h2>
 			<p><code>k9999 -p data</code> 就是全部调用方式。每个 profile 的 prompt 里都带同一套 8 条输出规则。</p>
 		</div>
@@ -478,7 +591,7 @@
 						<td class="mono">deepseek-v4-pro</td>
 						<td class="mono">high</td>
 						<td class="mono">read · bash</td>
-						<td><span class="win">刻意不给 edit</span>：数据 Agent 用 bash 写脚本到文件，改你仓库是另一个尚未做出的决定</td>
+						<td><span class="win">刻意不给 edit</span>：数据 Agent 用 bash 写脚本到文件，改你的仓库是另一个决定。它同时是 SPEC 0002 里"规划就是一个 profile"的现成例证</td>
 					</tr>
 				</tbody>
 			</table>
@@ -490,9 +603,13 @@
 
 	<section id="evidence">
 		<div class="sec-head">
-			<p class="sec-num">04 / EVIDENCE</p>
-			<h2>输出规则来自实测，不是直觉</h2>
-			<p>ASD-STE100 是航空文档的受控语言，53 条规则加约 900 词的受控词典。把它当指令注入确实有效，但同一份研究自己的数据说明了更好的做法。</p>
+			<span class="chip shipped">已实现 · 依据来自外部实测</span>
+			<p class="sec-num">07 / OUTPUT RULES</p>
+			<h2>八条规则，推翻了一个直觉</h2>
+			<p>
+				ASD-STE100 是航空文档的受控语言，53 条规则加约 900 词的受控词典。
+				把它当指令注入确实有效，但同一份研究自己的数据说明了更好的做法。
+			</p>
 		</div>
 		<div class="table-panel table-scroll">
 			<table>
@@ -526,14 +643,17 @@
 				</tbody>
 			</table>
 		</div>
-		<p class="table-note">
-			原作者的结论：skill 只在自己的 linter 上赢，五十多条规则稀释了真正起作用的那五条。完整规则还带一个漏洞——STE 豁免代码块和列表项的句长限制，模型于是把所有东西都做成列表项。<br>
-			结论进 ADR-0007：提取规则，不引用标准，不附带词典。完整的数据和自测方法在 <code>docs/writing-rules.md</code>。
+		<p class="prov">
+			<b>数字来源：</b>
+			上表的原始数据来自 <code>AminBlg/SimpleEnglish</code> 仓库公开的评测，不是本项目测的。作者的结论：
+			skill 只在自己的 linter 上赢，五十多条规则稀释了真正起作用的那五条。
+			完整规则还带一个漏洞 —— STE 豁免代码块和列表项的句长限制，模型于是把所有东西都做成列表项。
+			<br>结论进 <b>ADR-0007</b>：提取规则，不引用标准，不附带词典。自测方法在 <code>docs/writing-rules.md</code>。
 		</p>
 
-		<div class="sec-head" style="margin-top:64px">
-			<h2>八条规则</h2>
-			<p>规则 1–5 来自 STE。规则 6–8 不是——它们管的是"交付形态"，而任何受控语言都对此一言不发，却贡献了大部分压缩量。</p>
+		<div class="sec-head" style="margin-top:56px">
+			<h2 style="font-size:21px">八条规则</h2>
+			<p>规则 1–5 来自 STE。规则 6–8 不是 —— 它们管的是"交付形态"，而任何受控语言都对此一言不发，却贡献了大部分压缩量。</p>
 		</div>
 		<ol class="rules">
 			<li><span><b>句长上限</b><span>指令句 20 词，描述句 25 词。回答前数一遍最长的三句，超了就拆开。</span></span></li>
@@ -547,11 +667,157 @@
 		</ol>
 	</section>
 
+	<section id="rejected">
+		<div class="sec-head">
+			<p class="sec-num">08 / REJECTED</p>
+			<h2>否决清单</h2>
+			<p>每条否决都带数字或可测的后果。没有一条理由是"不够优雅"。</p>
+		</div>
+		<div class="grid-3">
+			<div class="cell">
+				<span class="kpi">10<small> ms</small></span>
+				<h3>裸 RUST 二进制</h3>
+				<p>Codex 的原生二进制启动只要 10ms。看起来值得为它换语言。</p>
+			</div>
+			<div class="cell">
+				<span class="kpi">465<small> ms</small></span>
+				<h3>走 NPM 之后</h3>
+				<p>同一个二进制经 npm 的 Node 壳启动要 465ms，比 Pi 的 415ms 还慢。分发路径把内核优势全部吃掉。</p>
+			</div>
+			<div class="cell">
+				<span class="kpi">309<small> MB</small></span>
+				<h3>换来的安装体积</h3>
+				<p>Codex 装 309MB，Pi 装 21MB。所以 Rust 在这里是叶子，不是核心。<b>ADR-0003</b></p>
+			</div>
+		</div>
+		<div class="table-panel table-scroll" style="margin-top:28px">
+			<table>
+				<thead>
+					<tr><th>否决</th><th>理由</th><th class="mono">ADR</th></tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>fork 整个 Pi</td>
+						<td>上游对内核、工具协议、compaction、provider 覆盖的改进会全部错过，而且要维护两棵 Pi。代价是每个应用层功能自己写</td>
+						<td class="mono">0001</td>
+					</tr>
+					<tr>
+						<td>采用 Cordis</td>
+						<td>Cordis 自己很小（9 个文件、106KB、2 个依赖），但它的四项能力里只有两项现在用得上。会在容器纪律上花掉第一个月</td>
+						<td class="mono">0002</td>
+					</tr>
+					<tr>
+						<td>Plan 模式</td>
+						<td>模式要求人在事前选对，而属性不用。规划已经是 profile，设闸应该是可逆性</td>
+						<td class="mono">0010</td>
+					</tr>
+					<tr>
+						<td>用 Jev 判可判定的事实</td>
+						<td>破折号是正则，测试结果是退出码。送模型去判，是拿方差和延迟换零收益</td>
+						<td class="mono">0011</td>
+					</tr>
+					<tr>
+						<td>模型评分的 eval</td>
+						<td>评委和被评对象共享偏见。ADR-0007 就是这件事的实测版本：在自己的 linter 上赢，在读者看得见的地方全输</td>
+						<td class="mono">0012</td>
+					</tr>
+					<tr>
+						<td>现在支持 MCP</td>
+						<td>推迟。当前路径是把 MCP 工具写成普通 tool 模块，不为它先建沙箱和发现层</td>
+						<td class="mono">0008</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</section>
+
+	<section id="specs">
+		<div class="sec-head">
+			<p class="sec-num">09 / SPECS</p>
+			<h2>四份契约</h2>
+			<p>
+				一份 spec 是给还没建的东西立的契约：问题、不变量、接口、<strong>可运行的验收标准</strong>、以及明确的不做什么。
+				决策记录写的是"已经决定了什么"，spec 写的是"建完必须为真"。
+			</p>
+		</div>
+		<div class="table-panel table-scroll">
+			<table>
+				<thead>
+					<tr><th class="mono">#</th><th>Spec</th><th class="mono">状态</th><th>依赖</th><th>第一步</th></tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="mono">0001</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0001-non-blocking-interaction.md">不阻塞的交互</a></td>
+						<td><span class="chip spec">accepted</span></td>
+						<td class="mono">—</td>
+						<td>单通道上把 <code>Agent</code> 换成 <code>AgentHarness</code></td>
+					</tr>
+					<tr>
+						<td class="mono">0002</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0002-reversibility-not-modes.md">可逆性，不是模式</a></td>
+						<td><span class="chip spec">accepted</span></td>
+						<td class="mono">0001</td>
+						<td>工具注册表加 <code>reversibility</code> 字段</td>
+					</tr>
+					<tr>
+						<td class="mono">0003</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0003-jev-decision-layer.md">Jev 决策层</a></td>
+						<td><span class="chip spec">accepted</span></td>
+						<td class="mono">0004</td>
+						<td>先探测延迟与成本，再接进任何路径</td>
+					</tr>
+					<tr>
+						<td class="mono">0004</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0004-measurement-and-budget.md">测量与预算</a></td>
+						<td><span class="chip spec">accepted</span></td>
+						<td class="mono">—</td>
+						<td><code>packages/eval</code> 骨架与 replay</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<p class="table-note">
+			建造顺序由依赖决定，不由优先级决定。0004 先做，理由只有一个：
+			<strong>没有它，其他三项的收益都无法被判断。</strong>
+		</p>
+	</section>
+
+	<section id="status">
+		<div class="sec-head">
+			<p class="sec-num">10 / STATUS</p>
+			<h2>已经能跑的，和还不存在的</h2>
+			<p>缺口写在文档里，不藏在路线图里。每一条都指向它自己的 ADR 或 spec。</p>
+		</div>
+		<div class="gaps">
+			<div class="gap-row">
+				<span class="tag done">已交付 · 有测试</span>
+				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 8 条输出规则写进两个 profile · 18 个测试</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag open">未实现 · 0 行代码</span>
+				<p><b>不阻塞的交互</b> · <b>可逆性设闸</b> · <b>Jev 决策层</b> · <b>measurement 与预算</b> —— 四份 spec 都是 <code>accepted</code>，四份都还没开始。这一页不给它们任何数字。</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag">DEFERRED</span>
+				<p><b>MCP</b> —— 当前路径是把 MCP 工具写成普通 tool 模块注册进 <code>TOOL_FACTORIES</code>，不为它先建沙箱和发现层。<b>ADR-0008</b></p>
+			</div>
+			<div class="gap-row">
+				<span class="tag">半成品</span>
+				<p><b>技能调用</b> —— 声明的技能会解析、校验、渲染进系统提示，但读取靠 Agent 自己调 <code>read</code>，尚无技能调用工具。</p>
+			</div>
+			<div class="gap-row">
+				<span class="tag">有意为之</span>
+				<p><b>没有扩展生态</b> —— 没有可借用的 <code>ExtensionAPI</code>。Pi 扩展不等于 K9999 扩展，这是自己拥有上层的代价。<b>ADR-0001</b></p>
+			</div>
+		</div>
+	</section>
+
 	<section id="start">
 		<div class="sec-head">
-			<p class="sec-num">05 / START</p>
+			<p class="sec-num">11 / START</p>
 			<h2>两条命令，零凭据验证</h2>
-			<p>测试用脚本化 provider 驱动，整条链路——模型请求、工具执行、二次请求、回合结束——都不需要网络。</p>
+			<p>测试用脚本化 provider 驱动，整条链路 —— 模型请求、工具执行、二次请求、回合结束 —— 都不需要网络。</p>
 		</div>
 		<div class="term-wrap">
 			<div class="term-head">
@@ -582,64 +848,13 @@
 		</div>
 	</section>
 
-	<section id="gaps">
-		<div class="sec-head">
-			<p class="sec-num">06 / STATUS</p>
-			<h2>已经能用的，和还没做的</h2>
-			<p>缺口写在文档里，不藏在路线图里。两条缺口各有对应 ADR 记录理由。</p>
-		</div>
-		<div class="gaps">
-			<div class="gap-row">
-				<span class="tag done">已交付</span>
-				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 18 个测试</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag">DEFERRED</span>
-				<p><b>MCP</b> —— ADR-0008 明确推迟。当前路径是把 MCP 工具写成普通 tool 模块注册进 <code>TOOL_FACTORIES</code>，不为它先建沙箱和发现层。</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag">半成品</span>
-				<p><b>技能调用</b> —— 声明的技能会解析、校验、渲染进系统提示，但读取靠 Agent 自己调 <code>read</code>，尚无技能调用工具。</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag done">有意为之</span>
-				<p><b>没有扩展生态</b> —— 没有可借用的 <code>ExtensionAPI</code>。Pi 扩展不等于 K9999 扩展，这是自己拥有上层的代价，写在 ADR-0001。</p>
-			</div>
-		</div>
-	</section>
-
-	<section id="decisions">
-		<div class="sec-head">
-			<p class="sec-num">07 / DECISIONS</p>
-			<h2>八条架构决策记录</h2>
-			<p>每条都写了选了什么、否决了什么、代价是什么、什么条件下重新考虑。决策改变时修改记录，而不是删除它。</p>
-		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th>#</th><th>决策</th><th>否决的方案</th></tr>
-				</thead>
-				<tbody>
-					<tr><td class="mono">0001</td><td>基于 <code>pi-agent-core</code> 构建</td><td>fork Pi；或薄层依赖整个 Pi 应用</td></tr>
-					<tr><td class="mono">0002</td><td>不采用 Cordis</td><td>现在引入 DI 容器与配置语法插件树</td></tr>
-					<tr><td class="mono">0003</td><td>Rust 当叶子，不当核心</td><td>Rust 内核 + TypeScript UI + 协议边界</td></tr>
-					<tr><td class="mono">0004</td><td>Profile 是唯一的 Agent 类型机制</td><td>CLI flag；单 prompt 内条件分段</td></tr>
-					<tr><td class="mono">0005</td><td>Prompt 组装顺序是契约</td><td>把 <code>{{tools}}</code> 插值交给作者自由摆放</td></tr>
-					<tr><td class="mono">0006</td><td>工具经单一注册表按名寻址</td><td>未知工具名降级为警告</td></tr>
-					<tr><td class="mono">0007</td><td>8 条规则，不用 ASD-STE100</td><td>注入完整标准并照搬受控词典</td></tr>
-					<tr><td class="mono">0008</td><td>暂不支持 MCP</td><td>直接声明全部 MCP 工具；或先建沙箱发现层</td></tr>
-				</tbody>
-			</table>
-		</div>
-	</section>
-
 </div>
 
 <footer>
 	<div class="wrap">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 2 packages · 3 tools · 18 tests</span>
+		<span>TypeScript · Node ≥ 22.19 · 2 packages · 3 tools · 18 tests · 4 specs</span>
 	</div>
 </footer>
 

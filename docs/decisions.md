@@ -147,3 +147,84 @@ The author's conclusion: the skill wins only on its own linter, and more than fi
 **Consequences.** Connecting one MCP server today means writing one module. That is cheap and honest.
 
 **Rejected.** Declaring every MCP tool directly would spend context on every session. Building a sandboxed discovery layer is a project of its own and should not precede the evidence that it is needed.
+
+---
+
+## 0009 — The core never blocks on a human
+
+**Status:** accepted. Supersedes the `Agent` choice in 0001 for anything long-running.
+
+**Context.** A kernel that asks a human by awaiting a promise has exactly one place the answer can come from. Every other channel waits for a turn that will never finish. Pi's WeChat bridge stalls for this reason: a confirmation in the terminal, nobody at the terminal, and the WeChat side waits forever. An unattended agent that blocks is also indistinguishable from one that crashed.
+
+`AgentHarness` in `pi-agent-core` already supplies the substrate: a durable `{ kind: "suspended", reason: "deferred" }` run outcome, `resume()`, `getLastResult()` for reading the outcome a dead process never delivered, and an inbox with distinct `steer`/`followUp`/`nextRun` semantics. It has no human-interaction primitive, which is the part K9999 adds.
+
+**Decision.** Every human interaction is a durable record with an address, a deadline, and a default action. The `Agent` class is replaced by `AgentHarness` for anything that can outlive a process.
+
+**Consequences.** Durable state becomes mandatory. `AgentHarness` requires a `Storage` backend over three forms — immutable entries, mutable registers, and an append-only usage ledger — which moves the project from a stateless single process to something that must choose and ship a store. That is a deployment question, not a refactor, and it is the cost of this decision.
+
+In exchange, three failures stop being possible: a blocked turn, a lost answer after a crash, and a redelivered message starting a second turn.
+
+**Revisit when** the storage requirement blocks a deployment that would otherwise work — a single-file binary with no writable state, for instance.
+
+**Rejected.** Fixing this inside a channel integration would leave the block in the core, where every future channel inherits it. A timeout-only fix converts a hang into a failure without ever recovering the answer.
+
+---
+
+## 0010 — No Plan mode; irreversibility is the axis
+
+**Status:** accepted
+
+**Context.** Plan mode stops an agent from making irreversible changes before it understands the situation. It does this with a mode the user must enter before anything happens, which means the agent behaves well only when someone remembered.
+
+**Decision.** Do not build a Plan mode and do not recommend one. Two replacements cover the same ground:
+
+1. **Planning is a profile.** `tools: ["read", "bash"]` with no write tool is a plan mode, expressed as data. The `data` profile already does this and a test asserts it cannot write.
+2. **The gate is irreversibility.** A tool declares itself `read`, `reversible`, or `irreversible`, and the core gates on that. `edit` inside a repository is reversible by `git checkout`; `rm -rf` is not.
+
+**Consequences.** The property applies whether or not anyone configured it, which a mode cannot. The cost is that someone must classify each tool, and `bash` cannot be classified statically — its command is not known until it arrives. The declaration is therefore a floor, raised by a read-only allowlist and, when available, by a decision model. An unclassifiable command falls back to the floor: irreversible.
+
+**Revisit when** three values prove too coarse. A finer scale invites arguments about classification rather than about behavior, so it should be forced by a case, not by taste.
+
+**Rejected.** A dry-run mode is also a mode. Diff previews before an edit are a nicety, not a gate, because an edit in a repository already is reversible.
+
+---
+
+## 0011 — A decision layer beside the main model
+
+**Status:** accepted
+
+**Context.** An agent makes many small decisions per turn, and a frontier model is the wrong instrument for all of them. Asking it whether a message is a question or an instruction spends a round trip and a large prompt to obtain one bit, and returns that bit inside prose that must be parsed and can be malformed.
+
+Jev (TypeSafe AI, `jev-latest`, `POST /v1/systemone`) is a decision model. It does not generate text. It answers named questions of three kinds (`noul`, `choice`, `score`) and returns typed values with `confidence`, full `probabilities`, and its own token `usage`.
+
+The third of those is decisive: it turns "the decider might be wrong" from a risk into a threshold with a measurable error rate. The second is what makes its cost accountable rather than a matter of faith.
+
+**Decision.** Jev is called through a `Decider` interface, never imported directly, with a scripted implementation required from the start so decision paths stay testable without a network. Its rules are taken from `pi-mcp-adapter`, which already ships a Jev integration: deterministic code narrows before the decider chooses; every choice offers an escape label; the distribution is read rather than the argmax; optimizations fail open and safety fails closed; degradation is reported rather than hidden; responses are validated as untrusted input; and every call carries the sources it discloses.
+
+**Consequences.** A network dependency enters the per-turn path, so its latency decides where it may be used, and that latency is currently unmeasured. A probe precedes any wiring. Fixed per-call cost also means a decision layer can lose money on a short turn while winning on a long one.
+
+**Rules that bound it.** Anything decidable by code is not a decision. An em-dash is a regular expression, a test result is an exit code, a file's existence is a `stat`. The list of permitted questions is short and grows only by adding a row with a stated failure mode and a test.
+
+**Revisit when** the probe shows a round trip too slow for the interactive channel, in which case the layer applies only to unattended work.
+
+**Rejected.** A fallback to a local model when Jev is unavailable would add a third source of judgment and a third failure mode. Fail-open and fail-closed are the only two answers, and which one applies depends on whether the decision optimizes or protects.
+
+---
+
+## 0012 — Measurement precedes optimization
+
+**Status:** accepted
+
+**Context.** Every figure on the product page currently comes from somewhere else. The startup latency was measured once by hand and the output-rule table is another project's published study. Decision record 0007 exists because that study measured, and the intuition lost.
+
+Without a harness of its own, "fewer tokens, same performance" is not a claim. It is also the claim most likely to be believed on the strength of a number that omits the turns it cost.
+
+**Decision.** `packages/eval` is built before any optimization it would judge. Two modes: `probe` for the cost of one call, `task` for a fixed task set end to end. Every task carries a deterministic success predicate defined outside the measured configuration. Three runs minimum. Every metric recorded, including the decision layer's own tokens and whether a component degraded.
+
+Alongside it, a budget per task: a cost, wall-time, and turn ceiling that stops the run and states the reason rather than adapting to stay inside it.
+
+**Consequences.** No optimization merges without a before-and-after over the fixed set, which makes every change more expensive and removes the ability to ship a plausible improvement on intuition. The payoff is the same as 0007's: when the intuition is wrong, the repository says so before the page does.
+
+**Revisit when** never, in the sense that this is a standing constraint rather than a choice. It is recorded here because a constraint nobody wrote down is the first one dropped.
+
+**Rejected.** A model-graded rubric would let the eval judge quality without a fixture, and it is the trap 0007 describes: the grader and the graded share a bias. A leaderboard would answer a question nobody asked, since the question is whether a change to this harness helped.
