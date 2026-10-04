@@ -108,7 +108,20 @@
 
 	.hero { padding: 88px 0 66px; border-bottom: 1px solid var(--line); }
 
-	.hero-logo { display: block; width: 76px; height: 76px; margin-bottom: 26px; }
+	/* Mark and wordmark on one baseline. Both scale with the viewport, so the
+	   proportion between them holds from a phone to a wide screen. */
+	.lockup {
+		display: flex;
+		align-items: center;
+		gap: clamp(20px, 3vw, 38px);
+	}
+
+	.lockup .lockup-mark {
+		display: block;
+		flex: none;
+		height: clamp(62px, 10.4vw, 124px);
+		width: auto;
+	}
 
 	.eyebrow {
 		font-family: var(--mono);
@@ -356,6 +369,9 @@
 	}
 
 	@media (max-width: 860px) {
+		h1 { font-size: clamp(38px, 6.2vw, 68px); }
+		.lockup { gap: 20px; }
+		.lockup .lockup-mark { height: clamp(56px, 13vw, 84px); }
 		.grid-3, .grid-2 { grid-template-columns: 1fr; }
 		.bar nav { display: none; }
 		.hero { padding: 60px 0 50px; }
@@ -388,9 +404,11 @@
 <div class="wrap">
 
 	<div class="hero">
-		<img class="hero-logo" src="logo.svg" alt="K9999" width="76" height="76">
 		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
-		<h1>K9999<br><span class="thin">Agent Harness</span></h1>
+		<div class="lockup">
+			<img class="lockup-mark" src="logo.svg" alt="" width="124" height="124">
+			<h1>K9999<br><span class="thin">Agent Harness</span></h1>
+		</div>
 		<p class="kicknote">在 pi-agent-core 之上，组装你自己的 Agent Harness。</p>
 		<p class="slogan">永不阻塞，先测量<span class="en">Never blocks. Measures first.</span></p>
 		<p class="lede">
