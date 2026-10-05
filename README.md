@@ -4,6 +4,10 @@
 
 Built on [Pi](https://github.com/earendil-works/pi) — thanks to its authors for shipping the agent kernel, the model layer, and terminal rendering as reusable libraries rather than one application. `pi-agent-core` and `pi-ai` do the work this project stands on, and without that split K9999 would not exist.
 
+```bash
+npx k9999 --print "what does this function do?"
+```
+
 K9999 owns everything above them: profiles, prompt assembly, the tool registry, the launch commands, and the measurement harness. It is not a fork of Pi and not a wrapper around it.
 
 Two launch commands, one implementation:
@@ -58,13 +62,22 @@ Set `DEEPSEEK_API_KEY` before a run that talks to a real model. The test suite u
 
 ### Install it as a package
 
+Published as [`k9999@0.1.0`](https://www.npmjs.com/package/k9999):
+
+```bash
+npx k9999 --show        # no install, and no clone
+npm install -g k9999    # both commands on PATH
+```
+
+To build and publish it yourself:
+
 ```bash
 npm run build --workspace k9999     # bundles to packages/cli/dist
 npm pack --workspace k9999          # k9999-0.1.0.tgz
-npm install -g ./k9999-0.1.0.tgz    # or: npx ./k9999-0.1.0.tgz
+npm --workspace k9999 publish       # prepublishOnly runs the full check first
 ```
 
-The tarball ships the two profiles inside it, because an installed copy runs in a directory that has none above it. [SPEC 0006](docs/specs/0006-publish-to-npm.md) records what that costs and why the bundle asserts rather than reports.
+The tarball ships the two profiles inside it, because an installed copy runs in a directory that has none above it. [SPEC 0006](docs/specs/0006-publish-to-npm.md) records what that costs, why the build asserts rather than reports, and the 2FA and registry traps that cost two publish attempts.
 
 ## Layout
 
@@ -120,9 +133,9 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, and the two launch commands. Fifty-three tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Fifty-three tests, no credentials required.
 
-Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0006](docs/specs/0006-publish-to-npm.md), the npm package. The bundle installs and runs from an empty directory; no release has been published.
+Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness. Missing: `probe` mode, and any figure from a real provider.
 
 Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
 

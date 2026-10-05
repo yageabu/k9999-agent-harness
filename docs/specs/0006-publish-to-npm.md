@@ -1,6 +1,8 @@
 # 0006 — Publish to npm
 
-**Status:** `accepted`
+**Status:** `shipped`
+
+Published as `k9999@0.1.0` on 2026-10-05. Kept as the record of what the four constraints cost and how the build asserts.
 
 ## Problem
 
@@ -84,12 +86,44 @@ Two things it must get right, both of which were wrong at least once:
 
 ## Publishing
 
-Not yet done. The steps, once a credential exists:
+The package is live. `k9999@0.1.0`, published 2026-10-05.
 
 ```bash
 npm login --registry=https://registry.npmjs.org
-npm run build --workspace k9999
 npm --workspace k9999 publish
+npm view k9999 --registry=https://registry.npmjs.org
 ```
 
-`prepublishOnly` runs the build and the full check, so a version that fails its own tests cannot be published by accident. The account needs two-factor authentication, and npm asks for a one-time password on publish.
+### The 2FA trap, because it cost two attempts
+
+A granular access token authenticates and appears in `npm token list` as a **Publish token**, and still cannot publish:
+
+```
+npm error 403 403 Forbidden - PUT https://registry.npmjs.org/k9999
+  Two-factor authentication or granular access token with bypass 2fa
+  enabled is required to publish packages.
+```
+
+npm's documentation is explicit, and the default is the reason:
+
+> The Bypass 2FA capability applies to tokens with write access and is **set to false by default at token creation**.
+
+`npm token list` does not show the flag, so a write-capable token that cannot publish looks identical to one that can. **Check "Bypass 2FA" when creating it, and remember it cannot be edited afterwards** — a token's permissions are fixed at creation, so a token made without it must be replaced rather than fixed.
+
+### The registry trap
+
+This repository's `~/.npmrc` points at a read-only mirror, so `npm login` without `--registry=https://registry.npmjs.org` authenticates somewhere that cannot accept a publish. `publishConfig.registry` in the manifest keeps the *publish target* correct regardless, but the *credential* has to be issued for the right registry. The token is stored under `//registry.npmjs.org/:_authToken`, and that key is what to check afterwards.
+
+### What `prepublishOnly` guarantees
+
+It runs the build and the full check, so a version failing its own tests cannot be published by accident. Verified: the failed 2FA attempts still ran all 53 tests and produced the tarball before being rejected at the upload.
+
+### Verified after publishing
+
+| Check | Result |
+|---|---|
+| Registry metadata | `k9999@0.1.0`, MIT, 3 dependencies, bins `k9999` and `kula` |
+| Artifact identity | Registry `shasum` `80ea5a74580a3007da235edfcc61db8495dc9732` matches the local build byte for byte |
+| npm signature | Present |
+| Install from the registry | Both bins resolve from a clean prefix |
+| Run from an empty directory | `kula --show` resolves the `data` profile and names `node_modules/k9999/dist/profiles` as the directory it used |
