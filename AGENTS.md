@@ -75,8 +75,10 @@ npm run eval -- --scripted --verify-replay
 
 ```bash
 npm run build --workspace k9999    # bundle + copy profiles and skills
-npm pack --workspace k9999         # k9999-0.1.0.tgz
+npm pack --workspace k9999         # k9999-<version>.tgz
 ```
+
+Two registries, one manifest. npmjs gets the unscoped `k9999`. GitHub Packages requires the name to be scoped to the owning account, so `scripts/publish-github-packages.mjs` stages a copy as `@yageabu/k9999` and publishes that; it never modifies the repository manifest, so a failure part way through leaves the workspace as it was. The workflow asks the built-in `GITHUB_TOKEN` for `packages: write`, which is why no personal token appears in the docs.
 
 Two traps, both of which the build script now fails on rather than logging:
 

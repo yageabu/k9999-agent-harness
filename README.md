@@ -71,12 +71,20 @@ npm run k9999 -- --print "hello"
 
 ### Install it as a package
 
-Published as [`k9999@0.1.0`](https://www.npmjs.com/package/k9999):
+Published as [`k9999@0.2.0`](https://www.npmjs.com/package/k9999):
 
 ```bash
 npx k9999 --show        # no install, and no clone
 npm install -g k9999    # both commands on PATH
 ```
+
+GitHub Packages carries the same build under a scoped name, because that registry requires it:
+
+```bash
+npm install -g @yageabu/k9999 --registry=https://npm.pkg.github.com
+```
+
+That registry needs authentication **even for public packages**, so npmjs stays the path in the instructions above. The name is scoped only for the GitHub publish; `scripts/publish-github-packages.mjs` stages a copy and never modifies the repository manifest.
 
 To build and publish it yourself:
 
@@ -151,9 +159,11 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Seventy-two tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, the transcript TUI, and the npm package. `k9999@0.2.0` installs and runs from an empty directory. Seventy-two tests, no credentials required.
 
-Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0007](docs/specs/0007-rendering-and-sinks.md), whose tier 1 is done and whose tier 2 waits for 0001.
+Published to npmjs as `k9999`. GitHub Packages carries the same build as `@yageabu/k9999`, because that registry requires the name to be scoped to the owning account; the workflow asks the built-in `GITHUB_TOKEN` for `packages: write` so no personal token is involved. Note that **GitHub Packages requires authentication even for public packages**, which is why npmjs remains the install path in the README.
+
+Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0007](docs/specs/0007-rendering-and-sinks.md), whose tier 3 is the full-screen dashboard.
 
 Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
 

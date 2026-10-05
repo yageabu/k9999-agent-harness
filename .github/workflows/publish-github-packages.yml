@@ -1,0 +1,46 @@
+name: Publish to GitHub Packages
+
+# Publishing to GitHub Packages needs a token with `write:packages`. A personal
+# token has to be created and kept; the workflow's built-in GITHUB_TOKEN only
+# has to be asked for the scope, which is why this exists rather than a
+# documented `npm publish` and a note about personal tokens.
+#
+# It publishes as `@yageabu/k9999` because GitHub Packages requires the package
+# name to be scoped to the account that owns the repository. The unscoped name
+# on npmjs is unchanged, so `npx k9999` keeps working.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      # The same check that gates a local publish gates this one. A tag that
+      # fails its own tests must not reach a registry.
+      - run: npm ci
+      - run: npm run check
+
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/publish-github-packages.mjs
+
+      - name: Summarise
+        run: |
+          echo "### Published \`@yageabu/k9999@$(node -p "require('./packages/cli/package.json').version")\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install: \`npm i -g @yageabu/k9999 --registry=https://npm.pkg.github.com\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Note: GitHub Packages requires authentication even for public packages." >> "$GITHUB_STEP_SUMMARY"
