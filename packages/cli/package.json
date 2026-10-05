@@ -5,8 +5,8 @@
 	"type": "module",
 	"license": "MIT",
 	"bin": {
-		"k9999": "./dist/index.js",
-		"kula": "./dist/index.js"
+		"k9999": "dist/index.js",
+		"kula": "dist/index.js"
 	},
 	"exports": {
 		".": "./dist/index.js",
