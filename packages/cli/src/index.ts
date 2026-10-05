@@ -2,13 +2,11 @@
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
+	ConfigurationError,
 	createHarness,
-	DEFAULT_MODEL,
 	type Harness,
 	listProfiles,
 	loadProfile,
-	type Profile,
-	ProfileError,
 	resolveProfilesDir,
 } from "@k9999/core";
 import { createTextSink, createTranslator, initialRunState, type RenderSink } from "./render/index.ts";
@@ -28,6 +26,7 @@ Options:
   -m, --model <ref>      Model as provider/modelId, overrides the profile
       --print            Run the prompt once and exit
   -s, --show             Print the resolved profile and exit
+  -v, --version          Print the version and exit
       --tui              Use the interactive TUI (scrollback, multi-line editor)
       --no-tui           Force the plain line-based prompt
   -l, --list             List available profiles and exit
@@ -54,6 +53,7 @@ interface Args {
 	model?: string;
 	print: boolean;
 	show: boolean;
+	version: boolean;
 	tui?: boolean;
 	/**
 	 * Flags that belong to `update`.
@@ -75,6 +75,7 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 		profile: defaultProfile,
 		print: false,
 		show: false,
+		version: false,
 		piFlags: [],
 		list: false,
 		help: false,
@@ -110,6 +111,10 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 			case "-s":
 			case "--show":
 				args.show = true;
+				break;
+			case "-v":
+			case "--version":
+				args.version = true;
 				break;
 			case "--tui":
 				args.tui = true;
@@ -254,21 +259,27 @@ const SHIPPED_SKILLS = path.join(import.meta.dirname, "skills");
 /**
  * Print the resolved configuration without running anything.
  *
- * A launch name only supplies a default profile, so the selection has to be
- * observable or the claim cannot be checked. It also answers the first question
- * after a surprising run: which tools, and from which directory.
+ * It takes a built harness, which is the point: a profile naming a tool that
+ * does not exist must fail here rather than at the first real run. Earlier this
+ * read the manifest and printed it, so `tools: read, reed, teleport` looked fine
+ * and then threw on the way into the first prompt.
+ *
+ * Building resolves the model and the skills too, so every load-time mistake a
+ * run would hit surfaces here — with no network and no credential.
  */
-function showProfile(profile: Profile, argv1: string | undefined, profilesDir: string): void {
+function showProfile(harness: Harness, argv1: string | undefined, profilesDir: string, cwd: string): void {
 	const command = argv1 === undefined ? "(unknown)" : path.basename(argv1);
 	const rows: [string, string][] = [
 		["command", command],
 		["default from command", profileForLaunchName(argv1)],
-		["profile", profile.id],
-		["agent", profile.config.name],
-		["model", profile.config.model ?? DEFAULT_MODEL],
-		["thinking", profile.config.thinkingLevel ?? "(runtime default)"],
-		["tools", profile.config.tools.join(", ") || "(none)"],
-		["skills", (profile.config.skills ?? []).join(", ") || "(none)"],
+		["profile", harness.profile.id],
+		["agent", harness.profile.config.name],
+		// The resolved reference, so K9999_MODEL and --model are visible here.
+		["model", harness.modelRef],
+		["thinking", harness.profile.config.thinkingLevel ?? "(runtime default)"],
+		["tools", harness.tools.map((tool) => tool.name).join(", ") || "(none)"],
+		["skills", (harness.profile.config.skills ?? []).join(", ") || "(none)"],
+		["cwd", cwd],
 		["profiles dir", profilesDir],
 	];
 	const width = Math.max(...rows.map(([label]) => label.length));
@@ -322,6 +333,11 @@ async function main(): Promise<number> {
 
 	const profilesDir = await resolveProfilesDir(args.profilesDir, [SHIPPED_PROFILES]);
 
+	if (args.version) {
+		process.stdout.write(`${await currentVersion()}\n`);
+		return 0;
+	}
+
 	if (args.list) {
 		for (const id of await listProfiles(profilesDir)) {
 			const profile = await loadProfile(profilesDir, id);
@@ -333,13 +349,23 @@ async function main(): Promise<number> {
 		return 0;
 	}
 
+	const cwd = process.cwd();
+
 	if (args.show) {
-		showProfile(await loadProfile(profilesDir, args.profile), process.argv[1], profilesDir);
+		const profile = await loadProfile(profilesDir, args.profile);
+		// Built rather than read: a profile naming a tool that does not exist must
+		// fail here, not on the way into the first prompt.
+		const harness = await createHarness({
+			profile,
+			cwd,
+			...(args.model === undefined ? {} : { model: args.model }),
+			skillsFallbacks: [SHIPPED_SKILLS],
+		});
+		showProfile(harness, process.argv[1], profilesDir, cwd);
 		return 0;
 	}
 
 	const profile = await loadProfile(profilesDir, args.profile);
-	const cwd = process.cwd();
 
 	const prompt = args.prompt.join(" ").trim();
 	if (args.print && prompt === "") {
@@ -386,9 +412,11 @@ async function main(): Promise<number> {
 try {
 	process.exitCode = await main();
 } catch (error) {
-	if (error instanceof ProfileError) {
+	if (error instanceof ConfigurationError) {
+		// A typo in a profile is the user's to fix, and the message names it. A
+		// stack trace would bury that line and imply a defect in the harness.
 		process.stderr.write(`${error.message}\n`);
-		process.exitCode = 1;
+		process.exitCode = 2;
 	} else {
 		process.stderr.write(`fatal: ${error instanceof Error ? error.stack : String(error)}\n`);
 		process.exitCode = 1;

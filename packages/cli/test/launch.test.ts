@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -118,6 +118,57 @@ test("the help text names both commands and their defaults", async () => {
 	assert.match(stdout, /kula\s+\[options\] \[prompt\.\.\.\]\s+the data analysis agent/);
 	assert.match(stdout, /k9999 → code, kula → data/);
 	assert.match(stdout, /--tui/);
+	assert.match(stdout, /-v, --version/);
+});
+
+test("--version and -v print the version and exit zero", async () => {
+	const packageJson = await import("../package.json", { with: { type: "json" } });
+	for (const flag of ["--version", "-v"]) {
+		const { stdout } = await run("node", [entry, flag], { cwd: repoRoot });
+		assert.equal(stdout.trim(), packageJson.default.version, `failed for ${flag}`);
+	}
+});
+
+test("--show validates the profile, not just reads it", async () => {
+	// A profile naming a tool that does not exist must fail here. Reading the
+	// manifest and printing it meant `read, reed, teleport` looked fine and then
+	// threw on the way into the first prompt.
+	const dir = await mkdtemp(path.join(tmpdir(), "k9999-bad-"));
+	await mkdir(path.join(dir, "mine"), { recursive: true });
+	await writeFile(
+		path.join(dir, "mine", "profile.json"),
+		JSON.stringify({ name: "Broken", tools: ["read", "reed"] }),
+		"utf8",
+	);
+	await writeFile(path.join(dir, "mine", "system.md"), "You are a test profile.\n", "utf8");
+
+	const failure = await run("node", [entry, "--profiles", dir, "--profile", "mine", "--show"], { cwd: repoRoot }).then(
+		() => undefined,
+		(error: { code?: number; stderr?: string }) => error,
+	);
+	assert.equal(failure?.code, 2);
+	assert.match(failure?.stderr ?? "", /Unknown tool "reed"\. Known tools: read, bash, edit/);
+});
+
+test("a configuration mistake prints its message, not a stack trace", async () => {
+	const failure = await run("node", [entry, "--profile", "nope", "--show"], { cwd: repoRoot }).then(
+		() => undefined,
+		(error: { code?: number; stderr?: string }) => error,
+	);
+	assert.equal(failure?.code, 2);
+	assert.match(failure?.stderr ?? "", /Unknown profile "nope"/);
+	assert.equal((failure?.stderr ?? "").includes("    at "), false, "a typo is not a defect, so no traceback");
+});
+
+test("--show reports the model that will actually be used", async () => {
+	// The resolved reference, so an environment override is visible rather than
+	// leaving the profile's value on screen while a different model is called.
+	const { stdout } = await run("node", [entry, "--show"], {
+		cwd: repoRoot,
+		env: { ...process.env, K9999_MODEL: "deepseek/deepseek-v4-pro" },
+	});
+	const model = parseShow(stdout)["model"];
+	assert.equal(model, "deepseek/deepseek-v4-pro");
 });
 
 test("--tui outside a terminal is refused rather than rendering into a pipe", async () => {

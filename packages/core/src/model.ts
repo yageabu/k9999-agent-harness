@@ -1,5 +1,6 @@
 import { createModels, type Api, type Model, type MutableModels, type Provider } from "@earendil-works/pi-ai";
 import { deepseekProvider } from "@earendil-works/pi-ai/providers/deepseek";
+import { ConfigurationError } from "./errors.ts";
 
 /**
  * Provider registry.
@@ -14,7 +15,7 @@ function providerFactory(provider: string): Provider {
 		case "deepseek":
 			return deepseekProvider();
 		default:
-			throw new Error(
+			throw new ConfigurationError(
 				`Unknown provider "${provider}". Add it to providerFactory() in packages/core/src/model.ts.`,
 			);
 	}
@@ -31,7 +32,7 @@ export interface ResolvedModel {
 export function resolveModel(reference: string): ResolvedModel {
 	const slash = reference.indexOf("/");
 	if (slash <= 0 || slash === reference.length - 1) {
-		throw new Error(`Model reference must be "provider/modelId", got ${JSON.stringify(reference)}`);
+		throw new ConfigurationError(`Model reference must be "provider/modelId", got ${JSON.stringify(reference)}`);
 	}
 	const provider = reference.slice(0, slash);
 	const id = reference.slice(slash + 1);
@@ -45,7 +46,7 @@ export function resolveModel(reference: string): ResolvedModel {
 			.getModels(provider)
 			.map((entry) => entry.id)
 			.join(", ");
-		throw new Error(`Model not found: ${reference}. Available for "${provider}": ${available || "(none)"}`);
+		throw new ConfigurationError(`Model not found: ${reference}. Available for "${provider}": ${available || "(none)"}`);
 	}
 	return { models, model, provider, id };
 }

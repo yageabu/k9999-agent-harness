@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import { ConfigurationError } from "./errors.ts";
 
 /** Thinking levels accepted by the agent runtime, in increasing effort order. */
 export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
@@ -30,7 +31,7 @@ export interface Profile {
 	system: string;
 }
 
-export class ProfileError extends Error {
+export class ProfileError extends ConfigurationError {
 	override readonly name = "ProfileError";
 }
 

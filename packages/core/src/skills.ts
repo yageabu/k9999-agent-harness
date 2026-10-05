@@ -1,8 +1,9 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { ConfigurationError } from "./errors.ts";
 import type { SkillSummary } from "./prompt.ts";
 
-export class SkillError extends Error {
+export class SkillError extends ConfigurationError {
 	override readonly name = "SkillError";
 }
 

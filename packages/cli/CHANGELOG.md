@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- **`--version` / `-v`.** Its absence was an oversight: every command line has
+  one, and `k9999 --version` answered `Unknown option`.
+- `--show` reports the working directory, and the model *after* every override,
+  so `K9999_MODEL` or `--model` are visible rather than the profile's value
+  sitting on screen while a different model is called.
+
+### Fixed
+
+- **`--show` now validates the profile instead of reading it.** A profile naming
+  a tool that does not exist looked fine and then threw on the way into the first
+  prompt. It builds the harness now, so every load-time mistake a run would hit
+  surfaces there — with no network and no credential.
+- **A configuration mistake prints its message, not a stack trace.** A typo in a
+  `profile.json` printed `fatal: ConfigurationError: …` followed by a traceback
+  that buried the one useful line. Configuration errors are now a distinct class
+  from defects, and they exit 2 rather than 1: `2` means what you asked for is
+  missing or misconfigured, `1` means the run started and failed.
+
 ## 0.3.0
 
 ### Added

@@ -10,6 +10,7 @@ export {
 export { buildSystemPrompt, type PromptInput, type SkillSummary, type ToolSummary } from "./prompt.ts";
 export { DEFAULT_MODEL, MODEL_ENV, createHarness, type Harness, type HarnessOptions } from "./harness.ts";
 export { type ResolvedModel, resolveModel } from "./model.ts";
+export { ConfigurationError } from "./errors.ts";
 export {
 	listSkills,
 	parseSkillDescription,

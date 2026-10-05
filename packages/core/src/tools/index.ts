@@ -1,4 +1,5 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
+import { ConfigurationError } from "../errors.ts";
 import { createBashTool } from "./bash.ts";
 import { createEditTool } from "./edit.ts";
 import { createReadTool } from "./read.ts";
@@ -33,7 +34,7 @@ export function createTools(names: readonly string[], cwd: string): AnyTool[] {
 	return names.map((name) => {
 		const factory = byName.get(name);
 		if (!factory) {
-			throw new Error(`Unknown tool "${name}". Known tools: ${toolNames().join(", ")}`);
+			throw new ConfigurationError(`Unknown tool "${name}". Known tools: ${toolNames().join(", ")}`);
 		}
 		return factory.build(cwd);
 	});
