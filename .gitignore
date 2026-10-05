@@ -3,6 +3,10 @@ dist/
 lib/
 *.tsbuildinfo
 
+# build output copied into the package for publishing
+packages/cli/LICENSE
+*.tgz
+
 # scratch
 .artifacts/
 tmp/

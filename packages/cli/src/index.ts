@@ -1,36 +1,44 @@
 #!/usr/bin/env node
+import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
 	createHarness,
+	DEFAULT_MODEL,
 	type Harness,
 	listProfiles,
 	loadProfile,
+	type Profile,
 	ProfileError,
 	resolveProfilesDir,
 } from "@k9999/core";
 import { createRenderer, type Renderer } from "./renderer.ts";
+import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
 
-const USAGE = `k9999 — agent harness
+const USAGE = `k9999, kula — agent harness
 
 Usage:
-  k9999 [options] [prompt...]
+  k9999 [options] [prompt...]     the code agent
+  kula  [options] [prompt...]     the data analysis agent
 
 Options:
-  -p, --profile <id>     Profile to run (default: code)
-      --profiles <dir>   Profiles directory (default: nearest ./profiles)
+  -p, --profile <id>     Profile to run (default: ${launchSummary()})
+      --profiles <dir>   Profiles directory (default: nearest ./profiles, then the one shipped here)
   -m, --model <ref>      Model as provider/modelId, overrides the profile
       --print            Run the prompt once and exit
+  -s, --show             Print the resolved profile and exit
   -l, --list             List available profiles and exit
   -h, --help             Show this help
 
 Environment:
   K9999_PROFILES   Profiles directory
   K9999_MODEL      Model as provider/modelId
+  DEEPSEEK_API_KEY Credential for the default provider
 
 Examples:
   k9999 --list
-  k9999 -p code --print "what does packages/core/src/prompt.ts do?"
-  k9999 -p data
+  k9999 --print "what does packages/core/src/prompt.ts do?"
+  kula                                   read data, interactive
+  npx k9999 --print "hello"
 `;
 
 interface Args {
@@ -38,6 +46,7 @@ interface Args {
 	profilesDir?: string;
 	model?: string;
 	print: boolean;
+	show: boolean;
 	list: boolean;
 	help: boolean;
 	prompt: string[];
@@ -45,8 +54,8 @@ interface Args {
 
 class UsageError extends Error {}
 
-function parseArgs(argv: readonly string[]): Args {
-	const args: Args = { profile: "code", print: false, list: false, help: false, prompt: [] };
+function parseArgs(argv: readonly string[], defaultProfile: string): Args {
+	const args: Args = { profile: defaultProfile, print: false, show: false, list: false, help: false, prompt: [] };
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
@@ -73,6 +82,10 @@ function parseArgs(argv: readonly string[]): Args {
 				break;
 			case "--print":
 				args.print = true;
+				break;
+			case "-s":
+			case "--show":
+				args.show = true;
 				break;
 			case "-l":
 			case "--list":
@@ -139,10 +152,47 @@ async function runInteractive(harness: Harness, renderer: Renderer): Promise<num
 	}
 }
 
+/**
+ * The profiles and skills shipped inside this package.
+ *
+ * In the published bundle `import.meta.dirname` is `<package>/dist`, so the
+ * shipped copies sit beside it. Running from source in the repository it is
+ * `<repo>/packages/cli/src`, where neither exists — harmless, because the
+ * walk-up from the working directory finds the repository's own first.
+ */
+const SHIPPED_PROFILES = path.join(import.meta.dirname, "profiles");
+const SHIPPED_SKILLS = path.join(import.meta.dirname, "skills");
+
+/**
+ * Print the resolved configuration without running anything.
+ *
+ * A launch name only supplies a default profile, so the selection has to be
+ * observable or the claim cannot be checked. It also answers the first question
+ * after a surprising run: which tools, and from which directory.
+ */
+function showProfile(profile: Profile, argv1: string | undefined, profilesDir: string): void {
+	const command = argv1 === undefined ? "(unknown)" : path.basename(argv1);
+	const rows: [string, string][] = [
+		["command", command],
+		["default from command", profileForLaunchName(argv1)],
+		["profile", profile.id],
+		["agent", profile.config.name],
+		["model", profile.config.model ?? DEFAULT_MODEL],
+		["thinking", profile.config.thinkingLevel ?? "(runtime default)"],
+		["tools", profile.config.tools.join(", ") || "(none)"],
+		["skills", (profile.config.skills ?? []).join(", ") || "(none)"],
+		["profiles dir", profilesDir],
+	];
+	const width = Math.max(...rows.map(([label]) => label.length));
+	for (const [label, value] of rows) {
+		process.stdout.write(`${label.padEnd(width)}  ${value}\n`);
+	}
+}
+
 async function main(): Promise<number> {
 	let args: Args;
 	try {
-		args = parseArgs(process.argv.slice(2));
+		args = parseArgs(process.argv.slice(2), profileForLaunchName(process.argv[1]));
 	} catch (error) {
 		process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n\n${USAGE}`);
 		return 2;
@@ -153,13 +203,21 @@ async function main(): Promise<number> {
 		return 0;
 	}
 
-	const profilesDir = await resolveProfilesDir(args.profilesDir);
+	const profilesDir = await resolveProfilesDir(args.profilesDir, [SHIPPED_PROFILES]);
 
 	if (args.list) {
 		for (const id of await listProfiles(profilesDir)) {
 			const profile = await loadProfile(profilesDir, id);
-			process.stdout.write(`${id.padEnd(12)} ${profile.config.name}\n`);
+			const launch = launchNameFor(id);
+			process.stdout.write(
+				`${id.padEnd(12)} ${profile.config.name.padEnd(22)} ${launch === undefined ? "" : `(${launch})`}\n`,
+			);
 		}
+		return 0;
+	}
+
+	if (args.show) {
+		showProfile(await loadProfile(profilesDir, args.profile), process.argv[1], profilesDir);
 		return 0;
 	}
 
@@ -178,6 +236,7 @@ async function main(): Promise<number> {
 		cwd,
 		...(args.model === undefined ? {} : { model: args.model }),
 		onEvent: renderer.handle,
+		skillsFallbacks: [SHIPPED_SKILLS],
 	});
 
 	if (args.print) {

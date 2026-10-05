@@ -14,7 +14,6 @@ Two launch commands, one implementation:
 | `kula` | reads data and reports what it says | read · bash |
 
 Neither blocks on a human, and neither is judged by a model's opinion of its own output.
-
 ## Status
 
 Early. Two profiles, three tools, one CLI, eight tests. Every claim in this file is verified by `npm run check`.
@@ -42,7 +41,7 @@ The `data` profile deliberately has no `edit`. A data agent writes scripts to fi
 
 ```bash
 npm install
-npm run check          # typecheck, 43 tests, and the site check. No API key needed
+npm run check          # typecheck, 53 tests, and the site check. No API key needed
 npm run k9999 -- --list
 npm run eval -- --scripted --verify-replay   # the measurement harness, also unauthenticated
 ```
@@ -51,11 +50,21 @@ Then, with a key set:
 
 ```bash
 npm run k9999 -- --print "what does packages/core/src/prompt.ts do?"   # code
-npm run kula                                                          # data, interactive
+npm run kula --show                                                   # data: the resolved config
 npm run kula -- --print "how many ERROR lines are in the log?"
 ```
 
 Set `DEEPSEEK_API_KEY` before a run that talks to a real model. The test suite uses a scripted provider and needs no credentials.
+
+### Install it as a package
+
+```bash
+npm run build --workspace k9999     # bundles to packages/cli/dist
+npm pack --workspace k9999          # k9999-0.1.0.tgz
+npm install -g ./k9999-0.1.0.tgz    # or: npx ./k9999-0.1.0.tgz
+```
+
+The tarball ships the two profiles inside it, because an installed copy runs in a directory that has none above it. [SPEC 0006](docs/specs/0006-publish-to-npm.md) records what that costs and why the bundle asserts rather than reports.
 
 ## Layout
 
@@ -102,7 +111,7 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Documentation
 
-- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: five specs, one of them building.
+- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: six specs, one shipped and two building.
 - [`docs/decisions.md`](docs/decisions.md) — fourteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
 - [`site/index.html`](site/index.html) — the product page. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
@@ -111,11 +120,11 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, and the CLI. Forty-three tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, and the two launch commands. Fifty-three tests, no credentials required.
 
-Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness. Task loading, deterministic predicates, JSONL transcripts, offline replay, budgets, and comparison reports all work. Missing: `probe` mode, and any figure from a real provider.
+Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0006](docs/specs/0006-publish-to-npm.md), the npm package. The bundle installs and runs from an empty directory; no release has been published.
 
-Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md), [0005](docs/specs/0005-two-launch-commands.md). The product page marks the three states separately and gives no figures for the third.
+Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
 
 ## License
 

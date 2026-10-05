@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { createModels, fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai";
 import {
 	buildSystemPrompt,
@@ -18,6 +21,8 @@ import {
 } from "../src/index.ts";
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
+const run = promisify(execFile);
+const coreEntry = pathToFileURL(path.join(repoRoot, "packages/core/src/index.ts")).href;
 
 async function profilesDir(): Promise<string> {
 	return await resolveProfilesDir(path.join(repoRoot, "profiles"));
@@ -102,6 +107,38 @@ test("bash reports the exit code and the working directory", async () => {
 
 	const bad = await bash.execute("call-2", { command: "exit 3" });
 	assert.equal(bad.details.exitCode, 3);
+});
+
+test("a packaged install falls back to the profiles it ships", async () => {
+	// A subprocess with its working directory outside the repository, because
+	// the walk-up is relative to the working directory and this test process is
+	// inside the repository, where the walk-up succeeds first.
+	const empty = await mkdtemp(path.join(tmpdir(), "k9999-empty-"));
+	const shipped = path.join(repoRoot, "profiles");
+	const probe = [
+		`import { resolveProfilesDir } from ${JSON.stringify(coreEntry)};`,
+		`console.log(await resolveProfilesDir(undefined, [${JSON.stringify(shipped)}]));`,
+	].join("\n");
+
+	const { stdout } = await run("node", ["--input-type=module", "-e", probe], { cwd: empty });
+	assert.equal(stdout.trim(), shipped, "the shipped copy is the only reachable one");
+});
+
+test("without a fallback, an unsearchable working directory names what it searched", async () => {
+	const empty = await mkdtemp(path.join(tmpdir(), "k9999-empty-"));
+	const probe = [
+		`import { resolveProfilesDir } from ${JSON.stringify(coreEntry)};`,
+		`await resolveProfilesDir(undefined, ["/nonexistent/profiles"]).catch((error) => {`,
+		`  console.error(error.message);`,
+		`  process.exit(1);`,
+		`});`,
+	].join("\n");
+
+	const failure = await run("node", ["--input-type=module", "-e", probe], { cwd: empty }).then(
+		() => undefined,
+		(error: { stderr?: string }) => error,
+	);
+	assert.match(failure?.stderr ?? "", /\/nonexistent\/profiles/, "the error must name every directory searched");
 });
 
 test("a skill description comes from frontmatter, then from the first paragraph", () => {

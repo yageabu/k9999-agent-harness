@@ -29,6 +29,8 @@ export interface HarnessOptions {
 	skills?: readonly SkillSummary[];
 	/** Directory holding `<name>/SKILL.md`. Resolved from disk only when `skills` is omitted. */
 	skillsDir?: string;
+	/** Extra candidate directories for skills, tried after the walk-up. For a packaged install. */
+	skillsFallbacks?: readonly string[];
 	/** Subscriber for every agent event. */
 	onEvent?: (event: AgentEvent) => void;
 }
@@ -62,7 +64,7 @@ export async function createHarness(options: HarnessOptions): Promise<Harness> {
 	if (options.skills === undefined) {
 		const declared = profile.config.skills ?? [];
 		if (declared.length > 0) {
-			skills = await resolveSkills(await resolveSkillsDir(options.skillsDir), declared);
+			skills = await resolveSkills(await resolveSkillsDir(options.skillsDir, options.skillsFallbacks), declared);
 		}
 	}
 

@@ -1,6 +1,8 @@
 # 0005 — Two launch commands: `k9999` and `kula`
 
-**Status:** `accepted`
+**Status:** `shipped`
+
+Implemented in `packages/cli/src/launch.ts` and covered by `packages/cli/test/launch.test.ts`. Kept as the record of why the mapping is shaped this way.
 
 ## Problem
 

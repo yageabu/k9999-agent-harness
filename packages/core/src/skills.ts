@@ -14,8 +14,8 @@ async function isDirectory(target: string): Promise<boolean> {
 	}
 }
 
-/** Same resolution order as profiles: explicit path, then `K9999_SKILLS`, then the nearest `skills`. */
-export async function resolveSkillsDir(explicit?: string): Promise<string> {
+/** Same resolution order as profiles: explicit path, `K9999_SKILLS`, the nearest `skills`, then the fallbacks. */
+export async function resolveSkillsDir(explicit?: string, fallbacks: readonly string[] = []): Promise<string> {
 	const requested = explicit ?? process.env["K9999_SKILLS"];
 	if (requested !== undefined && requested !== "") {
 		const resolved = path.resolve(requested);
@@ -37,8 +37,16 @@ export async function resolveSkillsDir(explicit?: string): Promise<string> {
 		}
 		dir = parent;
 	}
+
+	for (const fallback of fallbacks) {
+		if (await isDirectory(fallback)) {
+			return path.resolve(fallback);
+		}
+	}
+
+	const searched = fallbacks.length === 0 ? "" : `, or at ${fallbacks.join(" or ")}`;
 	throw new SkillError(
-		`No skills directory at or above ${process.cwd()}. Pass skillsDir or set K9999_SKILLS.`,
+		`No skills directory at or above ${process.cwd()}${searched}. Pass skillsDir or set K9999_SKILLS.`,
 	);
 }
 

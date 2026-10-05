@@ -414,17 +414,17 @@
 		<p class="lede">
 			<strong>建立在 Pi 之上</strong> —— 感谢它的作者把 Agent 内核、模型层和终端渲染做成了可复用的库，而不是一个应用。
 			内核、模型层、provider 覆盖从上游来；profile、prompt 组装、工具注册表、启动命令、以及测量工具全部归本仓库所有。
-			四条立场已经写成可验收的契约：测量工具已经在跑，其余三条都还没开始。
+			四条立场已经写成可验收的契约：测量工具和两个启动命令已经在跑，其余三条还没开始。
 			这一页会一直标明哪些数字是实测的，哪些东西还不存在。
 		</p>
 		<div class="commands">
 			<span><b class="ok">k9999</b>写代码、改代码</span>
-			<span><b class="pending">kula</b>读数据、报告它说了什么<em>SPEC 0005 · 尚未接线</em></span>
+			<span><b class="ok">kula</b>读数据、报告它说了什么</span>
 		</div>
 		<div class="hero-actions">
 			<span class="btn primary"><span class="tick">$</span> npm run check</span>
-			<span class="btn"><span class="tick">✓</span> 43 tests · 0 credentials</span>
-			<span class="btn">5 specs · 1 building</span>
+			<span class="btn"><span class="tick">✓</span> 53 tests · 0 credentials</span>
+			<span class="btn">6 specs · 1 shipped · 2 building</span>
 		</div>
 	</div>
 
@@ -905,9 +905,16 @@
 					<tr>
 						<td class="mono">0005</td>
 						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0005-two-launch-commands.md">两个启动命令</a></td>
-						<td><span class="chip spec">accepted</span></td>
+						<td><span class="chip shipped">shipped</span></td>
 						<td class="mono">—</td>
 						<td>第二个 bin 指向同一个入口，<code>kula</code> 默认 <code>data</code></td>
+					</tr>
+					<tr>
+						<td class="mono">0006</td>
+						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0006-publish-to-npm.md">发布到 npm</a></td>
+						<td><span class="chip building">building</span></td>
+						<td class="mono">0005</td>
+						<td>包已能安装运行；尚未正式发版</td>
 					</tr>
 				</tbody>
 			</table>
@@ -927,15 +934,15 @@
 		<div class="gaps">
 			<div class="gap-row">
 				<span class="tag done">已交付 · 有测试</span>
-				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print 模式与 REPL）· 事件渲染 · 8 条输出规则写进两个 profile</p>
+				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print / show / list / REPL）· <b>两个启动命令 k9999 与 kula</b> · 事件渲染 · 8 条输出规则写进两个 profile</p>
 			</div>
 			<div class="gap-row">
-				<span class="tag done">进行中 · SPEC 0004</span>
-				<p><b>测量工具</b> —— 3 个任务、确定性谓词、JSONL 轨迹、无网络重放、预算闸、报告在降级或来源不一致时拒绝给差值。25 个测试锁住这些行为。缺：<code>probe</code> 模式，以及接真 provider 跑出非估算的数字。<b>43 个测试总计</b></p>
+				<span class="tag done">进行中 · SPEC 0004 / 0006</span>
+				<p><b>测量工具</b> —— 3 个任务、确定性谓词、JSONL 轨迹、无网络重放、预算闸、报告在降级或来源不一致时拒绝给差值。<b>npm 包</b> —— 单包双 bin，profile 随包发布，在空目录里 <code>npx k9999</code> 可用。缺：<code>probe</code> 模式，以及正式发版</p>
 			</div>
 			<div class="gap-row">
 				<span class="tag open">未实现 · 0 行代码</span>
-				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>可选决策层</b>（0003）· <b>两个启动命令</b>（0005）—— 四份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
+				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>可选决策层</b>（0003）—— 三份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
 			</div>
 			<div class="gap-row">
 				<span class="tag">DEFERRED</span>
@@ -963,21 +970,34 @@
 				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
 				<span class="path">bash</span>
 			</div>
-<pre><span class="c"># 安装并验证：typecheck + 43 个测试，不需要 API key</span>
+<pre><span class="c"># 安装并验证：typecheck + 53 个测试，不需要 API key</span>
 <span class="a">$</span> npm install
 <span class="a">$</span> npm run check
-  <span class="g"># tests 43</span>
-  <span class="g"># pass 43</span>
+  <span class="g"># tests 53</span>
+  <span class="g"># pass 53</span>
   <span class="g"># fail 0</span>
-  <span class="g">site/index.html loads nothing external; 4 outbound hyperlink(s) allowed</span>
+  <span class="g">3 file(s) under site load nothing external; 5 outbound hyperlink(s) allowed</span>
 
 <span class="c"># 测量工具：3 个任务、重放校验，同样零凭据</span>
 <span class="a">$</span> npm run eval -- --scripted --verify-replay
 
-<span class="c"># 列出 profile（两个启动命令见 SPEC 0005，尚未接线）</span>
+<span class="c"># 两个启动命令：k9999 写代码，kula 读数据</span>
 <span class="a">$</span> npm run k9999 -- --list
-  code         Code Agent
-  data         Data Analysis Agent
+  code         Code Agent             (k9999)
+  data         Data Analysis Agent    (kula)
+
+<span class="c"># 解析后的配置，不跑任何东西</span>
+<span class="a">$</span> npm run kula -- --show
+  profile               data
+  model                 deepseek/deepseek-v4-pro
+  thinking              high
+  tools                 read, bash
+
+<span class="c"># 发布产物也是一个包，两个命令</span>
+<span class="a">$</span> npm run build --workspace k9999 && npm pack --workspace k9999
+  dist/index.js    26.7 KB
+  profiles         code, data
+<span class="a">$</span> npm install -g ./k9999-0.1.0.tgz   <span class="c"># 装完就有 k9999 和 kula</span>
 
 <span class="c"># 交互，或单次运行</span>
 <span class="a">$</span> npm run k9999 -- -p data
@@ -998,7 +1018,7 @@
 		<img class="logo" src="logo.svg" alt="" width="34" height="34">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 43 tests · 5 specs</span>
+		<span>TypeScript · Node ≥ 22.19 · 4 packages · 3 tools · 53 tests · 6 specs</span>
 		<span class="mono">never blocks · measures first</span>
 	</div>
 </footer>

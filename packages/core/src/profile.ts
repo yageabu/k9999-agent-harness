@@ -95,9 +95,14 @@ function parseProfileConfig(raw: unknown, file: string): ProfileConfig {
  * Resolve the profiles directory.
  *
  * Order: an explicit path, then `K9999_PROFILES`, then the nearest `profiles`
- * directory at or above the working directory.
+ * directory at or above the working directory, then each fallback in turn.
+ *
+ * The fallbacks exist for the published package. An installed `k9999` runs in
+ * someone else's project directory, which has no `profiles/` above it, so the
+ * only usable copy is the one shipped inside the package. A project that does
+ * provide one still wins, because the walk-up comes first.
  */
-export async function resolveProfilesDir(explicit?: string): Promise<string> {
+export async function resolveProfilesDir(explicit?: string, fallbacks: readonly string[] = []): Promise<string> {
 	const requested = explicit ?? process.env["K9999_PROFILES"];
 	if (requested !== undefined && requested !== "") {
 		const resolved = path.resolve(requested);
@@ -119,8 +124,16 @@ export async function resolveProfilesDir(explicit?: string): Promise<string> {
 		}
 		dir = parent;
 	}
+
+	for (const fallback of fallbacks) {
+		if (await isDirectory(fallback)) {
+			return path.resolve(fallback);
+		}
+	}
+
+	const searched = fallbacks.length === 0 ? "" : `, or at ${fallbacks.join(" or ")}`;
 	throw new ProfileError(
-		`No profiles directory at or above ${process.cwd()}. Pass --profiles or set K9999_PROFILES.`,
+		`No profiles directory at or above ${process.cwd()}${searched}. Pass --profiles or set K9999_PROFILES.`,
 	);
 }
 

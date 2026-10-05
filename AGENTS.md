@@ -47,6 +47,22 @@ npm run eval -- --scripted --verify-replay
 
 `providerFactory()` in `packages/core/src/model.ts` is the only switch. Import the factory, add one case, add a test.
 
+## Publishing the package
+
+`packages/cli` is the publishable package and its `name` is `k9999`, not `@k9999/cli`. `packages/core` is a `devDependency` because the build inlines it; `packages/eval` is not published at all.
+
+```bash
+npm run build --workspace k9999    # bundle + copy profiles and skills
+npm pack --workspace k9999         # k9999-0.1.0.tgz
+```
+
+Two traps, both of which the build script now fails on rather than logging:
+
+- **`packages: "external"` in esbuild marks every bare specifier external, and `@k9999/core` is a bare specifier.** The bundle came out at 8 KB with core still imported and would have failed on install. List the runtime dependencies explicitly; the build fails if the output imports anything else.
+- **`dependencies` and the external list must agree.** If they drift, the package installs without a module it imports.
+
+Anything the build declares must be true of the artifact. `scripts/build-package.mjs` asserts the shebang, that a symbol unique to core is present, that no undeclared import remains, that the manifest matches, and that profiles were copied.
+
 ## Working on the measurement harness
 
 `packages/eval` has conventions that are easy to break without noticing, because every one of them exists to stop a report from lying to its author.

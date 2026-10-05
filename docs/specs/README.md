@@ -30,7 +30,8 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0002 | [Reversibility, not modes](0002-reversibility-not-modes.md) | `accepted` | 0001 | `reversibility` on the tool registry |
 | 0003 | [An optional decision layer](0003-optional-decision-layer.md) | `accepted` | 0004 | Probe latency and cost before wiring it in |
 | 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
-| 0005 | [Two launch commands](0005-two-launch-commands.md) | `accepted` | — | A second bin pointing at the same entry |
+| 0005 | [Two launch commands](0005-two-launch-commands.md) | `shipped` | — | Done: a second bin and a mapping table, both covered by tests |
+| 0006 | [Publish to npm](0006-publish-to-npm.md) | `building` | 0005 | Done: the bundle, the shipped profiles, the fallback. Left: a release |
 
 ## Build order
 
@@ -45,12 +46,12 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
  │     │
  │     └──▶ 0002  reversibility ── builds on the interaction record from 0001
  │
- └──▶ 0005  launch commands    ── small and independent; the first thing worth doing
+ ├──▶ 0005  launch commands    ── shipped
+ │
+ └──▶ 0006  publish to npm     ── needs 0005: the bin list is the package manifest
 ```
 
-0001, 0003, and 0005 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes.
-
-0005 is the smallest item here and the only one that changes nothing about how the agent works. It is listed as the first move for that reason, not because it matters most.
+0001, 0003, and 0005 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes. 0006 depends on 0005, because a package manifest lists the bins the package provides.
 
 ## Rules every spec follows
 
