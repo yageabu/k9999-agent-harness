@@ -80,6 +80,23 @@ npm pack --workspace k9999         # k9999-<version>.tgz
 
 Two registries, one manifest. npmjs gets the unscoped `k9999`. GitHub Packages requires the name to be scoped to the owning account, so `scripts/publish-github-packages.mjs` stages a copy as `@yageabu/k9999` and publishes that; it never modifies the repository manifest, so a failure part way through leaves the workspace as it was. The workflow asks the built-in `GITHUB_TOKEN` for `packages: write`, which is why no personal token appears in the docs.
 
+### Publishing is asynchronous, and npm says otherwise
+
+`npm publish` prints `+ k9999@<version>` and exits zero on an HTTP **202 Accepted**, which means the registry took the request for later processing. The version is not installable yet. Every release so far has done this:
+
+```
+http fetch PUT 202 https://registry.npmjs.org/k9999 1993ms
++ k9999@0.4.0
+```
+
+Three things follow, all of which cost time to learn:
+
+- Wait about four minutes before checking, not ninety seconds.
+- A `npm install k9999@latest` before that fails with `notarget` even once the metadata lists the new version, because npm's own packument cache is still serving the previous one. `--prefer-online` bypasses it.
+- The `+` line is not evidence. The status code is: `grep -oE "http fetch PUT [0-9]+" ~/.npm/_logs/<the publish log>`.
+
+The tag push that publishes to GitHub Packages has no such problem; that workflow reports its own completion.
+
 Two traps, both of which the build script now fails on rather than logging:
 
 - **`packages: "external"` in esbuild marks every bare specifier external, and `@k9999/core` is a bare specifier.** The bundle came out at 8 KB with core still imported and would have failed on install. List the runtime dependencies explicitly; the build fails if the output imports anything else.
