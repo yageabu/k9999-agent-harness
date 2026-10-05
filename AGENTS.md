@@ -65,22 +65,36 @@ Anything the build declares must be true of the artifact. `scripts/build-package
 
 ## Working on the renderer
 
-`packages/cli/src/render/` is split so that nothing above it knows about terminals:
+Two surfaces share one transcript, so the formatting lives in one place:
 
-- `vocabulary.ts` — `RenderItem` and `RunState`. The agent produces these; no terminal concepts appear in them.
-- `translate.ts` — `AgentEvent` to `RenderItem`. Shape-checks a tool result before reading a change out of it, and never throws because some other tool returned a similar object.
-- `text-sink.ts` — `RenderItem` to bytes. Colour, diffs, turn lines.
+- `packages/cli/src/render/vocabulary.ts` — `RenderItem` and `RunState`. The agent produces these; no terminal concepts appear in them.
+- `packages/cli/src/render/translate.ts` — `AgentEvent` to `RenderItem`.
+- `packages/cli/src/render/layout.ts` — **the lines themselves**. Both the text sink and the TUI consume this, because two renderings of one event would drift.
+- `packages/cli/src/render/text-sink.ts` — streamed, incremental, one item at a time. What it adds is a cursor across two streams.
+- `packages/cli/src/tui/` — `TranscriptView` (accumulates items, returns the *last* N lines), `StatusBar`, and the app.
 
 Rules that are easy to break:
 
-- **`packages/core` must not import from `render/`.** The description flows one way. A test reads the module graph rather than trusting the convention.
+- **`packages/core` must not import from `render/` or `tui/`.** The description flows one way.
 - **Colour comes from `node:util`'s `styleText`, with `validateStream: false`.** `styleText` suppresses colour itself when the stream is not a TTY, which would silently disable the explicit `"always"` mode.
-- **One logical cursor across two streams.** Print mode sends the answer to stdout and activity to stderr, so a newline must follow whichever stream was written to last. Writing it to a fixed stream leaves the answer without a trailing newline.
+- **One logical cursor across two streams.** Print mode sends the answer to stdout and activity to stderr, so a newline must follow whichever stream was written to last.
 - **`closeInline` uses `breakLine`, never a bare `\n`.** Text that already ended its line must not gain a blank one.
-- **Paths are absolute in the data and short on screen.** Tools report facts; `shorten()` is a display concern and never rewrites what a tool reported.
+- **The transcript returns the newest lines.** `VStack` slices children from the start, so returning the whole history would show the oldest and hide the newest.
+- **A VStack does not allocate height.** Each child returns its natural size, so the transcript reads the terminal to fit itself.
+- **The editor needs `tui.setFocus(editor)`.** Without it, typing does nothing and nothing reports why.
+- **Paths are absolute in the data and short on screen.** Tools report facts; `shorten()` is display only.
 - **No diff library.** An edit is an exact string replacement, so the tool already holds both sides.
 
-Look at the output rather than imagining it: `npm run preview --workspace k9999`.
+### Node runs these `.ts` files directly, with limits
+
+There is no build step for development: Node strips the types. Stripping removes types without generating code, so:
+
+- **Parameter properties are a syntax error at runtime.** `constructor(private readonly x: T)` throws `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`. Declare the field and assign it.
+- Enums, namespaces, and decorators are also unavailable.
+
+And one behaviour worth knowing rather than fixing: the editor treats a chunk containing text *and* `\r` as a paste and does not submit it. A real terminal delivers keys separately, so this only bites a coalescing transport. `packages/cli/test/tui.test.ts` asserts both forms so the difference is recorded.
+
+Look at the output rather than imagining it: `npm run preview --workspace k9999`. The TUI has no such script — its tests drive it through a headless `Terminal` and assert on the captured frames.
 
 ## Working on the measurement harness
 

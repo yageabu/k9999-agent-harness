@@ -142,7 +142,7 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Sixty-one tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Seventy-two tests, no credentials required.
 
 Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0007](docs/specs/0007-rendering-and-sinks.md), whose tier 1 is done and whose tier 2 waits for 0001.
 

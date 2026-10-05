@@ -19,6 +19,7 @@
  * fails if the output imports anything that is not on the list.
  */
 import { copyFile, cp, mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
+import { builtinModules } from "node:module";
 import path from "node:path";
 import { build } from "esbuild";
 
@@ -26,6 +27,7 @@ import { build } from "esbuild";
 const RUNTIME_DEPENDENCIES = [
 	"@earendil-works/pi-agent-core",
 	"@earendil-works/pi-ai",
+	"@earendil-works/pi-tui",
 	"typebox",
 ];
 
@@ -70,12 +72,19 @@ for (const symbol of ["TOOL_FACTORIES", "buildSystemPrompt", "resolveProfilesDir
 }
 
 // 3. Every remaining import must be a listed dependency or a node builtin.
+//
+// `builtinModules` is authoritative, and it matters because a builtin may be
+// imported bare (`events`) as well as prefixed (`node:events`). Recognising
+// only the prefixed form reported a Node builtin as an undeclared dependency —
+// which is exactly the false alarm a check like this must not produce, because
+// the next one gets ignored.
+const BUILTINS = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 const imported = new Set();
 for (const match of emitted.matchAll(/(?:from|import)\s*["']([^"']+)["']/g)) {
 	imported.add(match[1]);
 }
 for (const specifier of imported) {
-	if (specifier.startsWith("node:") || specifier.startsWith("./") || specifier.startsWith("../")) {
+	if (BUILTINS.has(specifier) || specifier.startsWith(".") || specifier.startsWith("..")) {
 		continue;
 	}
 	const root = specifier.startsWith("@")

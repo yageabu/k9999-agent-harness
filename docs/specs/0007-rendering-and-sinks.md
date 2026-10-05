@@ -1,8 +1,8 @@
 # 0007 — Rendering: a vocabulary, a sink, and a dashboard
 
-**Status:** `accepted`
+**Status:** `building`
 
-Tiers 1 and 2 are the work. Tier 3 is a direction, recorded so it is not rediscovered.
+Tier 1 and the transcript TUI are implemented. Tier 3's dashboard is specified and not built.
 
 ## Problem
 
@@ -103,27 +103,30 @@ The per-turn line is the "measures first" claim appearing in the interface rathe
 
 ## Tier 2 — the renderer becomes a channel
 
-Tier 1 produces the seam. Tier 2 uses it, and lands with [0001](0001-non-blocking-interaction.md) rather than before it:
+Tier 1 produces the seam. Tier 2 uses it for the part that genuinely depends on [0001](0001-non-blocking-interaction.md):
 
 - an `interaction` renders as a **pending record** with its deadline and default action, not as a blocking prompt
-- the text sink becomes one channel among peers, not the only place an answer can come from
-- unrelated output moves off `stdout` so a piped run carries only the answer
+- the surface stops being the only place an answer can come from
+- unrelated output moves off `stdout` so a piped run carries only the answer — **done**, in tier 1, because print mode needed it anyway
 
-Doing this before 0001 would write "the terminal is where answers come from" into the UI, which is the bug 0001 exists to remove.
+Only that first point waits. The rest of the interface does not, and this spec previously claimed otherwise: it said building a UI before 0001 would put terminal assumptions where the channel boundary belongs. That was overstated.
+
+The risk is real but it cannot materialise yet, because **the harness has no interaction point today.** The tools are `read`, `bash`, and `edit`; none of them asks a human anything. A surface built now has nothing to block on. The constraint binds at the moment 0001 introduces interactions, and the rule for that moment is the one above: the surface renders a pending record and does not own the answer path.
 
 ## Tier 3 — a dashboard, not a chat TUI
 
-Direction, not a plan. The goal is stated here so that tier 1 and 2 do not foreclose it.
+Direction, not a plan. The goal is stated here so that tiers 1 and 2 do not foreclose it.
 
-**A surface that shows what a session is doing, per turn:**
+**A surface that shows what a session is doing, per turn.** Chosen shape: a **full-screen panel toggled by a key**, rather than a side panel or a status line. It is the only one of the three that can show all four of the concepts below at once, and the cost — one keystroke to see it — is the price of that.
 
-| Column | Source |
+| Row | Source |
 |---|---|
-| turn number, wall time | agent events |
+| session, cwd, model | the profile |
+| turns, wall time | agent events |
 | tokens up and down, cost | `usage` per assistant message |
 | tool calls, by name, success or failure | tool events |
 | skills declared and loaded | the profile |
-| plugins mounted, and which are degraded | 0003's component provenance |
+| components mounted, and which are degraded | 0003's provenance |
 | pending interactions and their deadlines | 0001 |
 | verification result | 0004's predicate |
 
@@ -134,7 +137,7 @@ The last four are the reason this is worth building rather than borrowing someon
 - **whether it is honest right now** — which components are on a fallback path
 - **whether it worked** — the predicate's verdict, not the model's opinion
 
-Which rendering technology serves that is deliberately undecided. Reusing `@earendil-works/pi-tui` (verified usable standalone: it imports cleanly from npm and measures terminal width correctly for wide characters) is one option; a browser surface over the existing JSON event stream is another, and needs no terminal at all. The choice should be made when 0001's channel interface exists, so the answer can be "whichever implements that interface cleanly".
+Which rendering technology serves that stays undecided, and the tier 1 work has narrowed it. `@earendil-works/pi-tui` is verified usable: it takes its terminal by injection, which makes the whole surface testable through a headless implementation, and `Component` is `render(width) => string[]`, a pure function. Its limits are equally clear — it has no border component, its component constructors take positional arguments so a wrong call fails silently, and nothing is themed until a theme is injected.
 
 ## Acceptance criteria
 

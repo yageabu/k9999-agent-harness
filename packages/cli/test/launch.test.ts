@@ -117,4 +117,17 @@ test("the help text names both commands and their defaults", async () => {
 	assert.match(stdout, /k9999 \[options\] \[prompt\.\.\.\]\s+the code agent/);
 	assert.match(stdout, /kula\s+\[options\] \[prompt\.\.\.\]\s+the data analysis agent/);
 	assert.match(stdout, /k9999 → code, kula → data/);
+	assert.match(stdout, /--tui/);
+});
+
+test("--tui outside a terminal is refused rather than rendering into a pipe", async () => {
+	// A fallback would answer a different question than the one asked, and the
+	// TUI would write escape sequences into the pipe and then wait for input a
+	// pipe will not send.
+	const failure = await run("node", [entry, "--tui"], { cwd: repoRoot }).then(
+		() => undefined,
+		(error: { code?: number; stderr?: string }) => error,
+	);
+	assert.equal(failure?.code, 2);
+	assert.match(failure?.stderr ?? "", /--tui needs a terminal/);
 });

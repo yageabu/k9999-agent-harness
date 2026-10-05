@@ -11,7 +11,8 @@ import {
 	ProfileError,
 	resolveProfilesDir,
 } from "@k9999/core";
-import { createTextSink, createTranslator, initialRunState } from "./render/index.ts";
+import { createTextSink, createTranslator, initialRunState, type RenderSink } from "./render/index.ts";
+import { createTuiApp } from "./tui/index.ts";
 import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
 
 const USAGE = `k9999, kula — agent harness
@@ -26,6 +27,8 @@ Options:
   -m, --model <ref>      Model as provider/modelId, overrides the profile
       --print            Run the prompt once and exit
   -s, --show             Print the resolved profile and exit
+      --tui              Use the interactive TUI (scrollback, multi-line editor)
+      --no-tui           Force the plain line-based prompt
   -l, --list             List available profiles and exit
   -h, --help             Show this help
 
@@ -47,6 +50,7 @@ interface Args {
 	model?: string;
 	print: boolean;
 	show: boolean;
+	tui?: boolean;
 	list: boolean;
 	help: boolean;
 	prompt: string[];
@@ -87,6 +91,12 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 			case "--show":
 				args.show = true;
 				break;
+			case "--tui":
+				args.tui = true;
+				break;
+			case "--no-tui":
+				args.tui = false;
+				break;
 			case "-l":
 			case "--list":
 				args.list = true;
@@ -120,7 +130,7 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
  * exit code is the CLI's business, and a sink that returned one would have to
  * know it was driving a command line.
  */
-function watch(harness: Harness, sink: ReturnType<typeof createTextSink>, cwd: string): { failure?: string } {
+function watch(harness: Harness, sink: RenderSink, cwd: string): { failure?: string } {
 	const translator = createTranslator(initialRunState(harness.modelRef, cwd));
 	const status: { failure?: string } = {};
 
@@ -149,6 +159,31 @@ async function runPrint(harness: Harness, status: { failure?: string }, prompt: 
 		return 1;
 	}
 	return 0;
+}
+
+/**
+ * The interactive TUI.
+ *
+ * Opt-in until it has been used, rather than the default. Auto-detecting a TTY
+ * is the right end state, but only once the thing it would select has been seen
+ * working on a real terminal.
+ */
+async function runTui(harness: Harness, cwd: string, color: "auto" | "always" | "never"): Promise<number> {
+	return await new Promise<number>((resolve) => {
+		const app = createTuiApp({
+			cwd,
+			color,
+			onSubmit: async (text) => {
+				await harness.agent.prompt(text);
+			},
+			onExit: () => {
+				app.stop();
+				resolve(0);
+			},
+		});
+		watch(harness, app.sink, cwd);
+		app.start();
+	});
 }
 
 async function runInteractive(harness: Harness, status: { failure?: string }): Promise<number> {
@@ -274,6 +309,18 @@ async function main(): Promise<number> {
 		});
 		const status = watch(harness, sink, cwd);
 		return await runPrint(harness, status, prompt);
+	}
+
+	if (args.tui === true) {
+		// Refused rather than silently falling back: a fallback would answer a
+		// different question than the one asked, and the TUI would otherwise write
+		// escape sequences into a pipe and then wait forever for input that a pipe
+		// will not send.
+		if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) {
+			process.stderr.write("--tui needs a terminal on stdin and stdout\n");
+			return 2;
+		}
+		return await runTui(harness, cwd, "auto");
 	}
 
 	const sink = createTextSink({ header: `${profile.config.name} · ${harness.modelRef} · ${cwd}` });
