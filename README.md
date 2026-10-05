@@ -60,6 +60,15 @@ npm run kula -- --print "how many ERROR lines are in the log?"
 
 Set `DEEPSEEK_API_KEY` before a run that talks to a real model. The test suite uses a scripted provider and needs no credentials.
 
+For development there is a `.env` instead of an export:
+
+```bash
+cp .env.example .env    # then put the key in it
+npm run k9999 -- --print "hello"
+```
+
+**The published package does not read `.env`.** An agent that loads environment variables from whatever directory it runs in can be redirected by a repository it was asked to inspect. Only the development scripts load one; installed copies read the environment and nothing else.
+
 ### Install it as a package
 
 Published as [`k9999@0.1.0`](https://www.npmjs.com/package/k9999):

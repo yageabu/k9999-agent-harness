@@ -2,6 +2,28 @@
 
 Notes for an agent making changes here. Read `docs/decisions.md` before changing a boundary.
 
+## Working on this repository
+
+### Getting a key into the development environment
+
+The provider reads `DEEPSEEK_API_KEY` from the environment. There is no config file, and **the published CLI does not read `.env`**: an agent that loads environment variables from whatever directory it runs in can be redirected by a repository it was asked to inspect. Only the development scripts load one.
+
+```bash
+cp .env.example .env
+# put the key in it, then:
+npm run k9999 -- --show          # no network needed
+npm run k9999 -- --print "hello" # a real call
+```
+
+`.env` is gitignored; `.env.example` is not, so what is needed is documented without carrying a secret. If you already use Pi, its `~/.pi/agent/auth.json` holds a deepseek key:
+
+```bash
+printf 'DEEPSEEK_API_KEY=%s\n' \
+  "$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.pi/agent/auth.json')))['deepseek']['key'])")" > .env
+```
+
+`npm run k9999` and `npm run eval` pass `--env-file-if-exists=.env`, which prints one line to stderr when the file is absent and continues. That line is expected on a fresh clone.
+
 ## Commands
 
 ```bash
@@ -62,6 +84,9 @@ Two traps, both of which the build script now fails on rather than logging:
 - **`dependencies` and the external list must agree.** If they drift, the package installs without a module it imports.
 
 Anything the build declares must be true of the artifact. `scripts/build-package.mjs` asserts the shebang, that a symbol unique to core is present, that no undeclared import remains, that the manifest matches, and that profiles were copied.
+
+- **Credentials come from the environment only.** Never add a `.env` loader to `packages/` — a published CLI that reads a file from the current directory can have its own key, and its `NODE_OPTIONS`, chosen by whatever repository it was pointed at. The development scripts load `.env` because they only ever run here.
+- **An answer goes to stdout, progress to stderr.** `k9999 --print "..." > out.txt` must leave only the answer in the file. `createTextSink` takes two writers for this.
 
 ## Working on the renderer
 

@@ -12,8 +12,8 @@
 		"node": ">=22.19.0"
 	},
 	"scripts": {
-		"k9999": "node packages/cli/src/index.ts",
-		"eval": "node packages/eval/src/cli.ts",
+		"k9999": "node --env-file-if-exists=.env packages/cli/src/index.ts",
+		"eval": "node --env-file-if-exists=.env packages/eval/src/cli.ts",
 		"eval:scripts": "node packages/eval/scripts/build-task-scripts.mjs",
 		"typecheck": "tsc --noEmit",
 		"test": "node --test \"packages/*/test/*.test.ts\"",
