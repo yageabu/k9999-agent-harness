@@ -962,15 +962,31 @@
 	<section id="start">
 		<div class="sec-head">
 			<p class="sec-num">11 / START</p>
-			<h2>两条命令，零凭据验证</h2>
-			<p>测试用脚本化 provider 驱动，整条链路 —— 模型请求、工具执行、二次请求、回合结束 —— 都不需要网络。</p>
+			<h2>三步跑起来</h2>
+			<p>装好、确认、配 key。前两步不需要凭据，也不连网。</p>
+		</div>
+		<ol class="rules">
+			<li><span><b>安装</b><span>一条命令装到全局，<code>k9999</code> 和 <code>kula</code> 都上 PATH。不想装就用 <code>npx k9999</code> 直接跑。</span></span></li>
+			<li><span><b>运行</b><span>零凭据就能确认装好了：<code>k9999 --list</code> 列出 profile，<code>k9999 --show</code> 打印解析后的配置。两步都不连网。</span></span></li>
+			<li><span><b>配置 API key</b><span>默认 provider 只认 <code>DEEPSEEK_API_KEY</code>。在 shell 里 <code>export DEEPSEEK_API_KEY=sk-...</code>，把 <code>sk-...</code> 换成你自己的 key。没配它时，需要模型的运行退出码为 1，只打印 <code>Provider is not configured: deepseek</code>，不静默回退。</span></span></li>
+		</ol>
+		<p class="table-note">
+			配好 key 后 <code>k9999 --print "列出 src 下的所有 .ts 文件"</code> 跑一次就退出，不带参数进入交互。数据 Agent 换成 <code>kula</code>，用同一个 key。
+		</p>
+		<p class="prov">
+			<b>这一页不放 key。</b>
+			配置步骤里的 <code>sk-...</code> 是占位符。真实的 key 由你自己的 shell 提供，仓库、这个页面、以及发布到 npm 的包里都不包含它。
+		</p>
+		<div class="sec-head" style="margin:52px 0 22px">
+			<h2 style="font-size:21px">零凭据验证</h2>
+			<p>测试和测量工具用脚本化 provider 驱动，整条链路 —— 模型请求、工具执行、二次请求、回合结束 —— 都不需要网络。</p>
 		</div>
 		<div class="term-wrap">
 			<div class="term-head">
 				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
 				<span class="path">bash</span>
 			</div>
-<pre><span class="c"># 已经发布到 npm，不需要克隆仓库：k9999@0.1.0</span>
+<pre><span class="c"># 已发布到 npm，不需要克隆仓库：k9999@0.1.0</span>
 <span class="a">$</span> npx k9999 --show
   profile               code
   tools                 read, bash, edit
@@ -983,7 +999,21 @@
   thinking              high
   tools                 read, bash                    <span class="c"># 没有 edit</span>
 
-<span class="c"># 或者从源码验证：typecheck + 53 个测试，不需要 API key</span>
+<span class="c"># 装到全局之后，两个命令都在 PATH 上</span>
+<span class="a">$</span> k9999 --list
+  code         Code Agent             (k9999)
+  data         Data Analysis Agent    (kula)
+
+<span class="c"># 单次运行，或进入交互；数据 Agent 换成 kula</span>
+<span class="a">$</span> DEEPSEEK_API_KEY=... k9999 --print "prompt.ts 的组装顺序是什么？"
+<span class="a">$</span> kula
+
+<span class="c"># 失败是响亮的，不是静默的</span>
+<span class="a">$</span> k9999 --print "hi"
+  <span class="r">Provider is not configured: deepseek</span>
+  <span class="m">exit 1</span>
+
+<span class="c"># 从源码（维护者）：typecheck + 53 个测试 + 站点检查，不需要 API key</span>
 <span class="a">$</span> npm install
 <span class="a">$</span> npm run check
   <span class="g"># tests 53</span>
@@ -994,31 +1024,10 @@
 <span class="c"># 测量工具：3 个任务、重放校验，同样零凭据</span>
 <span class="a">$</span> npm run eval -- --scripted --verify-replay
 
-<span class="c"># 两个启动命令：k9999 写代码，kula 读数据</span>
-<span class="a">$</span> npm run k9999 -- --list
-  code         Code Agent             (k9999)
-  data         Data Analysis Agent    (kula)
-
-<span class="c"># 解析后的配置，不跑任何东西</span>
-<span class="a">$</span> npm run kula -- --show
-  profile               data
-  model                 deepseek/deepseek-v4-pro
-  thinking              high
-  tools                 read, bash
-
-<span class="c"># 发布产物：单包双 bin，profile 随包走</span>
+<span class="c"># 构建发布产物：单包双 bin，profile 随包走</span>
 <span class="a">$</span> npm run build --workspace k9999
   dist/index.js    26.7 KB
   profiles         code, data
-
-<span class="c"># 交互，或单次运行</span>
-<span class="a">$</span> npm run k9999 -- -p data
-<span class="a">$</span> DEEPSEEK_API_KEY=... npm run k9999 -- --print "prompt.ts 的组装顺序是什么？"
-
-<span class="c"># 失败是响亮的，不是静默的</span>
-<span class="a">$</span> npm run k9999 -- --print "hi"
-  <span class="r">Provider is not configured: deepseek</span>
-  <span class="m">exit 1</span>
 </pre>
 		</div>
 	</section>
