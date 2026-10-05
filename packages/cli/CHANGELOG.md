@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+
+- **Ctrl+C no longer prints a traceback.** At the prompt it printed
+  `fatal: AbortError: Aborted with Ctrl+C` followed by six stack frames, because
+  an interrupt arrived as a rejected promise and hit the handler meant for
+  defects. An interrupt is not a defect.
+- **Ctrl+C during a turn stops the turn and returns to the prompt**, rather than
+  leaving, and no longer counts as a failure. Interrupting your own run was
+  reporting an error and setting a non-zero exit code.
+- **The prompt loop exits when its interface closes.** `question()` does not
+  settle when the interface is closed, so a plain await outlived the interrupt
+  and left the process waiting on a promise nothing would resolve — Node
+  reported an unsettled top-level await and the exit code was whatever the
+  warning produced.
+
 ## 0.4.0
 
 ### Added

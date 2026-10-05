@@ -217,22 +217,83 @@ async function runTui(harness: Harness, cwd: string, color: "auto" | "always" | 
 	});
 }
 
+/**
+ * The line-based prompt.
+ *
+ * Two things about Ctrl+C that the first version got wrong. It printed a stack
+ * trace, because an interrupt arrived as a rejected promise and hit the
+ * top-level handler for defects. And it treated the resulting aborted turn as a
+ * failure, so interrupting your own run reported an error and set a non-zero
+ * exit code.
+ *
+ * Now: an interrupt during a turn stops the turn and returns to the prompt; an
+ * interrupt at an idle prompt leaves. Neither is an error.
+ */
 async function runInteractive(harness: Harness, status: { failure?: string }): Promise<number> {
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
 	let exitCode = 0;
+	let running = false;
+	let interrupted = false;
+
+	const onInterrupt = (): void => {
+		if (running) {
+			interrupted = true;
+			harness.agent.abort();
+			return;
+		}
+		process.stdout.write("\n");
+		rl.close();
+	};
+	// Attaching a listener also stops readline's default of ending the process,
+	// which is what let the rejection escape in the first place.
+	rl.on("SIGINT", onInterrupt);
+
 	try {
 		for (;;) {
-			const line = (await rl.question("> ")).trim();
+			// `question()` does not settle when the interface is closed, so a
+			// plain await would outlive the interrupt and leave the process
+			// waiting on a promise nothing resolves. Race it against the close.
+			const answer = await new Promise<string | undefined>((resolve) => {
+				const onClose = (): void => resolve(undefined);
+				rl.once("close", onClose);
+				void rl.question("> ").then(
+					(value) => {
+						rl.off("close", onClose);
+						resolve(value);
+					},
+					() => {
+						rl.off("close", onClose);
+						resolve(undefined);
+					},
+				);
+			});
+			if (answer === undefined) {
+				break;
+			}
+
+			const line = answer.trim();
 			if (line === "") {
 				continue;
 			}
 			if (line === "/exit" || line === "/quit") {
-				return exitCode;
+				break;
 			}
+
+			running = true;
 			try {
 				await harness.agent.prompt(line);
 			} catch (error) {
 				status.failure = error instanceof Error ? error.message : String(error);
+			} finally {
+				running = false;
+			}
+
+			if (interrupted) {
+				// The user stopped their own turn. Saying so is enough.
+				interrupted = false;
+				delete status.failure;
+				process.stdout.write("\n");
+				continue;
 			}
 			if (status.failure !== undefined) {
 				process.stderr.write(`error: ${status.failure}\n`);
@@ -241,8 +302,10 @@ async function runInteractive(harness: Harness, status: { failure?: string }): P
 			}
 		}
 	} finally {
+		rl.off("SIGINT", onInterrupt);
 		rl.close();
 	}
+	return exitCode;
 }
 
 /**
