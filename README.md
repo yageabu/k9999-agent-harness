@@ -50,6 +50,8 @@ npm run k9999 -- --list
 npm run eval -- --scripted --verify-replay   # the measurement harness, also unauthenticated
 ```
 
+`k9999 update` reports whether a newer version is published. It exists because of version drift: an installed copy from months ago, next to a repository that has moved on, looks exactly like a missing feature. That is not hypothetical — it cost a debugging session.
+
 Then, with a key set:
 
 ```bash

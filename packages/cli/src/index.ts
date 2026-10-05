@@ -13,6 +13,7 @@ import {
 } from "@k9999/core";
 import { createTextSink, createTranslator, initialRunState, type RenderSink } from "./render/index.ts";
 import { createTuiApp } from "./tui/index.ts";
+import { check, configuredRegistry, currentVersion, PI_FLAGS, render as renderUpdate } from "./update.ts";
 import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
 
 const USAGE = `k9999, kula — agent harness
@@ -31,6 +32,9 @@ Options:
       --no-tui           Force the plain line-based prompt
   -l, --list             List available profiles and exit
   -h, --help             Show this help
+
+Commands:
+  update                 Report whether a newer version is published
 
 Environment:
   K9999_PROFILES   Profiles directory
@@ -51,6 +55,14 @@ interface Args {
 	print: boolean;
 	show: boolean;
 	tui?: boolean;
+	/**
+	 * Flags that belong to `update`.
+	 *
+	 * Collected rather than rejected so the command can answer them. Someone
+	 * arriving from Pi types `k9999 update --extensions` first, and "Unknown
+	 * option" teaches them nothing.
+	 */
+	piFlags: string[];
 	list: boolean;
 	help: boolean;
 	prompt: string[];
@@ -59,7 +71,15 @@ interface Args {
 class UsageError extends Error {}
 
 function parseArgs(argv: readonly string[], defaultProfile: string): Args {
-	const args: Args = { profile: defaultProfile, print: false, show: false, list: false, help: false, prompt: [] };
+	const args: Args = {
+		profile: defaultProfile,
+		print: false,
+		show: false,
+		piFlags: [],
+		list: false,
+		help: false,
+		prompt: [],
+	};
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
@@ -96,6 +116,12 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 				break;
 			case "--no-tui":
 				args.tui = false;
+				break;
+			case "--extensions":
+			case "--models":
+			case "--all":
+			case "--self":
+				args.piFlags.push(arg);
 				break;
 			case "-l":
 			case "--list":
@@ -263,6 +289,35 @@ async function main(): Promise<number> {
 	if (args.help) {
 		process.stdout.write(USAGE);
 		return 0;
+	}
+
+	// `update` is the only command, and it is recognised before any profile is
+	// resolved because checking a version needs no configuration.
+	if (args.prompt[0] === "update") {
+		if (args.prompt.length > 1) {
+			process.stderr.write(
+				`update takes no arguments, so ${JSON.stringify(args.prompt.slice(1).join(" "))} was not understood.\n` +
+					`To send that as a prompt: k9999 ${JSON.stringify(args.prompt.join(" "))}\n`,
+			);
+			return 2;
+		}
+		for (const flag of args.piFlags) {
+			const why = PI_FLAGS[flag];
+			if (why !== undefined) {
+				process.stdout.write(`${flag}\n  ${why}\n`);
+			}
+		}
+		if (args.piFlags.length > 0) {
+			process.stdout.write("\n");
+		}
+		const report = await check({ current: await currentVersion(), registry: configuredRegistry() });
+		process.stdout.write(`${renderUpdate(report).join("\n")}\n`);
+		return 0;
+	}
+
+	if (args.piFlags.length > 0) {
+		process.stderr.write(`${args.piFlags.join(", ")} only applies to \`k9999 update\`\n`);
+		return 2;
 	}
 
 	const profilesDir = await resolveProfilesDir(args.profilesDir, [SHIPPED_PROFILES]);

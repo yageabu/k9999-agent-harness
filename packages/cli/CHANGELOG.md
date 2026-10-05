@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- **`k9999 update`** reports whether a newer version is published. It reads the
+  registry npm would install from — so on a machine with a mirror it reports
+  what the mirror has, and names it — and prints the command rather than
+  running it. Replacing the binary that is currently running is
+  platform-dependent and can half-finish, and copying one command is cheap.
+- **The flags someone arriving from Pi reaches for are answered, not rejected.**
+  `k9999 update --extensions` explains that there are no installed packages to
+  update and why, instead of `Unknown option: --extensions`. `--models`, `--all`,
+  and `--self` get the same treatment.
+
+### Fixed
+
+- `k9999 update the readme` — extra words — says so, and prints the quoting that
+  would send them as a prompt instead.
+
 ## 0.2.0
 
 ### Added

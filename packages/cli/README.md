@@ -21,6 +21,16 @@ npm install -g k9999      # both commands on PATH
 npx k9999 --list          # or without installing
 ```
 
+## Update
+
+```bash
+k9999 update
+```
+
+Reports the running version, the registry it asked, and the latest it found — then prints the install command rather than running it. It reads the registry npm would install from, so on a machine with a mirror it says which one, and a lagging mirror is visible rather than confusing.
+
+Flags from other harnesses are answered rather than rejected: `k9999 update --extensions` explains that there are no installed packages to update, and why.
+
 Node 22.19 or newer.
 
 ## Configure a model
