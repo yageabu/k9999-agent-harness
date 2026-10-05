@@ -93,6 +93,22 @@ test("read rejects a missing file and edit refuses an ambiguous match", async ()
 	const result = await edit.execute("call-3", { path: "sample.txt", oldText: "beta", newText: "gamma" });
 	assert.equal(result.details.replaced, 1);
 	assert.equal(await readFile(target, "utf8"), "alpha\ngamma\nalpha\n");
+
+	// The renderer shows a diff from this data, so the real tool must produce the
+	// shape it reads. A fixture in the renderer's tests cannot prove that.
+	assert.equal(result.details.change.line, 2, "1-indexed line where the replacement starts");
+	assert.deepEqual(result.details.change.removed, ["beta"]);
+	assert.deepEqual(result.details.change.added, ["gamma"]);
+	assert.equal(result.details.change.path, target);
+
+	const multiline = await edit.execute("call-4", {
+		path: "sample.txt",
+		oldText: "alpha\ngamma",
+		newText: "one\ntwo\nthree",
+	});
+	assert.equal(multiline.details.change.line, 1);
+	assert.deepEqual(multiline.details.change.removed, ["alpha", "gamma"]);
+	assert.deepEqual(multiline.details.change.added, ["one", "two", "three"]);
 });
 
 test("bash reports the exit code and the working directory", async () => {

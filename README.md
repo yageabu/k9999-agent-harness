@@ -83,16 +83,25 @@ The tarball ships the two profiles inside it, because an installed copy runs in 
 
 ```
 packages/core/          profiles, prompt assembly, tool registry, agent wiring
-packages/cli/           argument parsing, event rendering, REPL
+packages/cli/           launch names, rendering, the REPL, and the preview script
 packages/eval/          tasks, transcripts, replay, budgets, and comparison reports
 profiles/<id>/          one agent type per directory
 skills/<name>/SKILL.md  long-form knowledge, advertised but loaded on demand
 docs/                   decisions, specs, and writing rules
-scripts/                repository checks
+scripts/                repository checks and the package build
 site/                   the product page and the logo, published to GitHub Pages
 ```
 
 `packages/core` never imports `packages/cli`. The CLI owns every decision about how an event looks; the core owns every decision about what an event means. `packages/eval` depends on `packages/core` and is depended on by nothing.
+
+### Seeing the renderer without credentials
+
+```bash
+npm run preview --workspace k9999          # colour on
+npm run preview --workspace k9999 -- never # plain, for piping
+```
+
+It drives the real translate-and-sink pipeline with a scripted provider in a temporary directory, so the rendered output can be looked at — and changed — without an API key or a `git diff` afterwards.
 
 ### Logo
 
@@ -124,7 +133,7 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Documentation
 
-- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: six specs, one shipped and two building.
+- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: seven specs, two shipped and two building.
 - [`docs/decisions.md`](docs/decisions.md) — fourteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
 - [`site/index.html`](site/index.html) — the product page. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
@@ -133,9 +142,9 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Fifty-three tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, and the npm package. `k9999@0.1.0` installs and runs from an empty directory. Sixty-one tests, no credentials required.
 
-Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness. Missing: `probe` mode, and any figure from a real provider.
+Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0007](docs/specs/0007-rendering-and-sinks.md), whose tier 1 is done and whose tier 2 waits for 0001.
 
 Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
 

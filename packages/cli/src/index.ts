@@ -11,7 +11,7 @@ import {
 	ProfileError,
 	resolveProfilesDir,
 } from "@k9999/core";
-import { createRenderer, type Renderer } from "./renderer.ts";
+import { createTextSink, createTranslator, initialRunState } from "./render/index.ts";
 import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
 
 const USAGE = `k9999, kula — agent harness
@@ -113,17 +113,45 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 	return args;
 }
 
-async function runPrint(harness: Harness, renderer: Renderer, prompt: string): Promise<number> {
+/**
+ * Feed agent events through the translator into the sink.
+ *
+ * The failure flag is tracked here rather than inside the sink because the
+ * exit code is the CLI's business, and a sink that returned one would have to
+ * know it was driving a command line.
+ */
+function watch(harness: Harness, sink: ReturnType<typeof createTextSink>, cwd: string): { failure?: string } {
+	const translator = createTranslator(initialRunState(harness.modelRef, cwd));
+	const status: { failure?: string } = {};
+
+	harness.agent.subscribe((event) => {
+		for (const item of translator.translate(event)) {
+			if (item.kind === "error") {
+				status.failure ??= item.message;
+			}
+			if (item.kind === "toolResult" && !item.ok) {
+				status.failure ??= `tool ${item.name} failed`;
+			}
+			sink.emit(item);
+		}
+		if (event.type === "agent_end") {
+			sink.end?.(translator.state);
+		}
+	});
+
+	return status;
+}
+
+async function runPrint(harness: Harness, status: { failure?: string }, prompt: string): Promise<number> {
 	await harness.agent.prompt(prompt);
-	process.stdout.write("\n");
-	if (renderer.state.error !== undefined) {
-		process.stderr.write(`${renderer.state.error}\n`);
+	if (status.failure !== undefined) {
+		process.stderr.write(`${status.failure}\n`);
 		return 1;
 	}
 	return 0;
 }
 
-async function runInteractive(harness: Harness, renderer: Renderer): Promise<number> {
+async function runInteractive(harness: Harness, status: { failure?: string }): Promise<number> {
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
 	let exitCode = 0;
 	try {
@@ -138,14 +166,13 @@ async function runInteractive(harness: Harness, renderer: Renderer): Promise<num
 			try {
 				await harness.agent.prompt(line);
 			} catch (error) {
-				renderer.state.error = error instanceof Error ? error.message : String(error);
+				status.failure = error instanceof Error ? error.message : String(error);
 			}
-			if (renderer.state.error !== undefined) {
-				process.stderr.write(`error: ${renderer.state.error}\n`);
+			if (status.failure !== undefined) {
+				process.stderr.write(`error: ${status.failure}\n`);
 				exitCode = 1;
-				delete renderer.state.error;
+				delete status.failure;
 			}
-			process.stdout.write("\n");
 		}
 	} finally {
 		rl.close();
@@ -230,21 +257,28 @@ async function main(): Promise<number> {
 		return 2;
 	}
 
-	const renderer = createRenderer(process.stdout);
 	const harness = await createHarness({
 		profile,
 		cwd,
 		...(args.model === undefined ? {} : { model: args.model }),
-		onEvent: renderer.handle,
 		skillsFallbacks: [SHIPPED_SKILLS],
 	});
 
 	if (args.print) {
-		return await runPrint(harness, renderer, prompt);
+		// The answer on stdout, the progress on stderr, so a redirect captures only
+		// the answer and a terminal still shows what the agent did.
+		const sink = createTextSink({
+			write: (chunk) => void process.stderr.write(chunk),
+			writeText: (chunk) => void process.stdout.write(chunk),
+			stream: process.stderr,
+		});
+		const status = watch(harness, sink, cwd);
+		return await runPrint(harness, status, prompt);
 	}
 
-	process.stdout.write(`${profile.config.name} | ${harness.modelRef} | ${cwd}\n\n`);
-	return await runInteractive(harness, renderer);
+	const sink = createTextSink({ header: `${profile.config.name} · ${harness.modelRef} · ${cwd}` });
+	const status = watch(harness, sink, cwd);
+	return await runInteractive(harness, status);
 }
 
 try {

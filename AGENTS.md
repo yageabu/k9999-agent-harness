@@ -63,6 +63,25 @@ Two traps, both of which the build script now fails on rather than logging:
 
 Anything the build declares must be true of the artifact. `scripts/build-package.mjs` asserts the shebang, that a symbol unique to core is present, that no undeclared import remains, that the manifest matches, and that profiles were copied.
 
+## Working on the renderer
+
+`packages/cli/src/render/` is split so that nothing above it knows about terminals:
+
+- `vocabulary.ts` — `RenderItem` and `RunState`. The agent produces these; no terminal concepts appear in them.
+- `translate.ts` — `AgentEvent` to `RenderItem`. Shape-checks a tool result before reading a change out of it, and never throws because some other tool returned a similar object.
+- `text-sink.ts` — `RenderItem` to bytes. Colour, diffs, turn lines.
+
+Rules that are easy to break:
+
+- **`packages/core` must not import from `render/`.** The description flows one way. A test reads the module graph rather than trusting the convention.
+- **Colour comes from `node:util`'s `styleText`, with `validateStream: false`.** `styleText` suppresses colour itself when the stream is not a TTY, which would silently disable the explicit `"always"` mode.
+- **One logical cursor across two streams.** Print mode sends the answer to stdout and activity to stderr, so a newline must follow whichever stream was written to last. Writing it to a fixed stream leaves the answer without a trailing newline.
+- **`closeInline` uses `breakLine`, never a bare `\n`.** Text that already ended its line must not gain a blank one.
+- **Paths are absolute in the data and short on screen.** Tools report facts; `shorten()` is a display concern and never rewrites what a tool reported.
+- **No diff library.** An edit is an exact string replacement, so the tool already holds both sides.
+
+Look at the output rather than imagining it: `npm run preview --workspace k9999`.
+
 ## Working on the measurement harness
 
 `packages/eval` has conventions that are easy to break without noticing, because every one of them exists to stop a report from lying to its author.

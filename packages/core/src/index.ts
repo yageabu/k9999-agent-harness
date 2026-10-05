@@ -23,6 +23,7 @@ export {
 	createEditTool,
 	createReadTool,
 	createTools,
+	type FileChange,
 	TOOL_FACTORIES,
 	type ToolFactory,
 	toolNames,

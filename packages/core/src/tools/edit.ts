@@ -11,11 +11,30 @@ const editSchema = Type.Object({
 
 export type EditToolInput = Static<typeof editSchema>;
 
+/**
+ * What an edit changed, as data.
+ *
+ * The tool already holds both sides of an exact string replacement, so the
+ * difference does not have to be computed. A renderer decides whether this
+ * becomes a diff, one summary line, or a row in a table; it never has to
+ * reconstruct what happened from byte counts.
+ */
+export interface FileChange {
+	path: string;
+	/** 1-indexed line where the replacement starts. */
+	line: number;
+	/** Lines the replacement removed. */
+	removed: readonly string[];
+	/** Lines it added. */
+	added: readonly string[];
+}
+
 export interface EditToolDetails {
 	path: string;
 	replaced: number;
 	bytesBefore: number;
 	bytesAfter: number;
+	change: FileChange;
 }
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -26,6 +45,18 @@ function countOccurrences(haystack: string, needle: string): number {
 		index = haystack.indexOf(needle, index + needle.length);
 	}
 	return count;
+}
+
+/** Split into lines without inventing a trailing empty line for a final newline. */
+function splitLines(text: string): string[] {
+	if (text === "") {
+		return [];
+	}
+	const lines = text.split("\n");
+	if (lines.length > 0 && lines[lines.length - 1] === "") {
+		lines.pop();
+	}
+	return lines;
 }
 
 /**
@@ -63,12 +94,33 @@ export function createEditTool(cwd: string): AgentTool<typeof editSchema, EditTo
 				);
 			}
 
+			const at = before.indexOf(params.oldText);
 			const after = before.replace(params.oldText, params.newText);
 			await writeFile(target, after, { encoding: "utf8" });
 
+			const removed = splitLines(params.oldText);
+			const added = splitLines(params.newText);
+			const change: FileChange = {
+				path: target,
+				// Count the newlines before the match; the replacement starts on the next line.
+				line: before.slice(0, at).split("\n").length,
+				removed,
+				added,
+			};
+
 			return {
-				content: [{ type: "text", text: `edited ${target} (${before.length} -> ${after.length} bytes)` }],
-				details: { path: target, replaced: 1, bytesBefore: before.length, bytesAfter: after.length },
+				// Line counts rather than byte counts: the caller is a model, and "+3 -1"
+				// says more about what happened than "412 -> 455 bytes".
+				content: [
+					{ type: "text", text: `edited ${target} (+${added.length} -${removed.length})` },
+				],
+				details: {
+					path: target,
+					replaced: 1,
+					bytesBefore: before.length,
+					bytesAfter: after.length,
+					change,
+				},
 			};
 		},
 	};

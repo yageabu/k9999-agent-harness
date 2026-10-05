@@ -44,6 +44,7 @@
 	},
 	"scripts": {
 		"build": "node ../../scripts/build-package.mjs",
+		"preview": "node scripts/render-preview.ts",
 		"prepublishOnly": "npm run build && npm --prefix ../.. run check"
 	},
 	"dependencies": {

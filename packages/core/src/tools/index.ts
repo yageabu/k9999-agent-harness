@@ -39,4 +39,6 @@ export function createTools(names: readonly string[], cwd: string): AnyTool[] {
 	});
 }
 
-export { createBashTool, createEditTool, createReadTool };
+export { createBashTool, type BashToolDetails, type BashToolInput } from "./bash.ts";
+export { createEditTool, type EditToolDetails, type EditToolInput, type FileChange } from "./edit.ts";
+export { createReadTool, type ReadToolDetails, type ReadToolInput } from "./read.ts";

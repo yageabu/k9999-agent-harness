@@ -32,6 +32,7 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
 | 0005 | [Two launch commands](0005-two-launch-commands.md) | `shipped` | — | Done: a second bin and a mapping table, both covered by tests |
 | 0006 | [Publish to npm](0006-publish-to-npm.md) | `shipped` | 0005 | Done: `k9999@0.1.0` is live and installs into an empty directory |
+| 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: the vocabulary, the sink seam, and the text sink with diffs. Left: tier 2 with 0001, tier 3 as a dashboard |
 
 ## Build order
 
@@ -44,14 +45,20 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
  │
  ├──▶ 0001  non-blocking core  ── the largest change; needs the baseline to prove no regression
  │     │
- │     └──▶ 0002  reversibility ── builds on the interaction record from 0001
+ │     ├──▶ 0002  reversibility ── builds on the interaction record from 0001
+ │     │
+ │     └──▶ 0007  tier 2        ── the sink becomes a channel, which needs 0001's interface
  │
  ├──▶ 0005  launch commands    ── shipped
  │
- └──▶ 0006  publish to npm     ── shipped: k9999@0.1.0
+ ├──▶ 0006  publish to npm     ── shipped: k9999@0.1.0
+ │
+ └──▶ 0007  tier 1             ── building: the vocabulary and the text sink
 ```
 
 0001, 0003, and 0005 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes. 0006 depends on 0005, because a package manifest lists the bins the package provides.
+
+0007 is the one spec that runs in two stages on purpose. Its tier 1 — the vocabulary and the text sink — has no dependencies and is the work. Its tier 2 makes the sink a channel, which needs 0001's interface to exist first. Doing tier 2 early would write "the terminal is where answers come from" into the UI, which is the bug 0001 exists to remove.
 
 ## Rules every spec follows
 
