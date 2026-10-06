@@ -8,6 +8,8 @@ Built on [Pi](https://github.com/earendil-works/pi) — thanks to its authors fo
 npx k9999 --print "what does this function do?"
 ```
 
+[Product page](https://yageabu.github.io/k9999-agent-harness) · [npm](https://www.npmjs.com/package/k9999) · [source](https://github.com/yageabu/k9999-agent-harness)
+
 K9999 owns everything above them: profiles, prompt assembly, the tool registry, the launch commands, and the measurement harness. It is not a fork of Pi and not a wrapper around it.
 
 Two launch commands, one implementation:
@@ -88,6 +90,34 @@ npm install -g @yageabu/k9999 --registry=https://npm.pkg.github.com
 
 That registry needs authentication **even for public packages**, so npmjs stays the path in the instructions above. The name is scoped only for the GitHub publish; `scripts/publish-github-packages.mjs` stages a copy and never modifies the repository manifest.
 
+### Setting the API key
+
+An installed copy reads its credential from the environment. There is no config file and no command that sets one once a session is running, so the two surfaces differ in when you can supply it.
+
+**The interactive TUI is long-running**, so a variable prefixed to one command never reaches it. Export it first, or put the line in your shell profile and set it once:
+
+```bash
+export DEEPSEEK_API_KEY=sk-...
+k9999 --tui
+kula --tui
+```
+
+**A single command** can carry it inline, which keeps it out of every process that follows:
+
+```bash
+DEEPSEEK_API_KEY=sk-... k9999 --print "what does this function do?"
+```
+
+Both surfaces start without a key, because the model is called only when you submit a prompt. So a missing key arrives after you think the install worked:
+
+```console
+$ k9999 --tui
+> hello
+error Provider is not configured: deepseek
+```
+
+`--print` exits 1 on that error and writes nothing to stdout. `k9999 --show` never needs a key, so it is the fastest way to check a configuration without a credential. The development scripts are the only thing that reads a `.env`; see the note in the quickstart for why installed copies do not.
+
 To build and publish it yourself:
 
 ```bash
@@ -162,9 +192,9 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 ## Documentation
 
 - [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: seven specs, two shipped and two building.
-- [`docs/decisions.md`](docs/decisions.md) — fourteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
+- [`docs/decisions.md`](docs/decisions.md) — fifteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
-- [`site/index.html`](site/index.html) — the product page. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
+- [`site/index.html`](site/index.html) — the product page, live at <https://yageabu.github.io/k9999-agent-harness>. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
 - [`site/logo.svg`](site/logo.svg) and [`site/mark.svg`](site/mark.svg) — the logo, in two sizes of one design
 - [`AGENTS.md`](AGENTS.md) — conventions for an agent working in this repository
 

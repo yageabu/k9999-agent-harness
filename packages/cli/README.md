@@ -2,6 +2,8 @@
 
 **Never blocks. Measures first.**
 
+[Product page](https://yageabu.github.io/k9999-agent-harness) · [source](https://github.com/yageabu/k9999-agent-harness)
+
 An agent harness that runs two agents from one install:
 
 | Command | Agent | Tools |
@@ -33,14 +35,36 @@ Flags from other harnesses are answered rather than rejected: `k9999 update --ex
 
 Node 22.19 or newer.
 
-## Configure a model
+## Set the API key
 
-The default provider reads `DEEPSEEK_API_KEY`:
+The default provider reads `DEEPSEEK_API_KEY` from the environment. There is no config file and no command that sets one once a session is running, so the two surfaces differ in when you can supply it.
+
+**A single command** can carry it inline:
+
+```bash
+DEEPSEEK_API_KEY=sk-... k9999 --print "list the .ts files in src"
+```
+
+**The interactive TUI is long-running**, so an inline prefix never reaches it. Export the variable first, or put the line in your shell profile and set it once:
 
 ```bash
 export DEEPSEEK_API_KEY=sk-...
-k9999 --print "list the .ts files in src"
+k9999          # or: kula
 ```
+
+Either way the session starts without a key, because the model is called only when you submit a prompt. The error therefore arrives a few seconds after the install looks like it worked:
+
+```console
+$ k9999
+> hello
+error Provider is not configured: deepseek
+```
+
+`--print` exits 1 on that error and writes nothing to stdout. `k9999 --show` never needs a key, which makes it the quickest way to check a configuration without a credential.
+
+**An installed copy does not read `.env`.** An agent that loads environment variables from whatever directory it runs in can be redirected by a repository it was asked to inspect, so the published package reads the environment and nothing else.
+
+## Configure a model
 
 Pick a different model with `--model provider/modelId`, or set `K9999_MODEL`. The provider must be one the harness knows; run any command and the error names the ones that exist.
 
