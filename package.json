@@ -13,6 +13,7 @@
 	},
 	"scripts": {
 		"k9999": "node --env-file-if-exists=.env packages/cli/src/index.ts",
+		"kula": "node --env-file-if-exists=.env packages/cli/src/index.ts -p data",
 		"eval": "node --env-file-if-exists=.env packages/eval/src/cli.ts",
 		"eval:scripts": "node packages/eval/scripts/build-task-scripts.mjs",
 		"typecheck": "tsc --noEmit",

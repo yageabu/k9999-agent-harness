@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { DEFAULT_PROFILE, LAUNCH_NAMES, launchNameFor, profileForLaunchName } from "../src/launch.ts";
+import { DEFAULT_PROFILE, LAUNCH_NAMES, launchNameFor, profileForLaunchName, sessionName } from "../src/launch.ts";
 
 const run = promisify(execFile);
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -69,6 +69,20 @@ test("the mapping is discoverable in both directions", () => {
 	assert.equal(launchNameFor("code"), "k9999");
 	assert.equal(launchNameFor("data"), "kula");
 	assert.equal(launchNameFor("nope"), undefined);
+});
+
+test("the startup block names the command that was typed", () => {
+	assert.equal(sessionName("/usr/local/bin/kula", "code"), "kula", "the typed command wins over the profile");
+	assert.equal(sessionName("k9999.js", "data"), "k9999");
+});
+
+test("a session started by path introduces itself as the profile's own command", () => {
+	// This is what makes `npm run kula` show KULA. The entry is run by path, so
+	// nothing was typed, and the profile stands in for the missing name.
+	assert.equal(sessionName("/repo/packages/cli/src/index.ts", "data"), "kula");
+	assert.equal(sessionName(undefined, "code"), "k9999");
+	// A profile with no launch name must not print `index.ts` as the program's name.
+	assert.equal(sessionName("/repo/packages/cli/src/index.ts", "mine"), "k9999");
 });
 
 test("each launch name resolves its own profile, tools, and thinking level", async () => {

@@ -151,7 +151,9 @@ Which rendering technology serves that stays undecided, and the tier 1 work has 
 
 ## Out of scope
 
-- **A chat TUI.** Tier 3 is a dashboard. A general-purpose conversational TUI is a different product, and building one is what would make this look like a Pi reskin.
+- **A chat TUI.** Tier 3 is a dashboard. A general-purpose conversational TUI is a different product.
+
+  The transcript TUI that exists borrows Pi's presentation, and the startup block, the `ctrl+o` help, and the two-line footer are Pi's shapes. The reason is that Pi is the interface its users already know, so matching it costs nothing to learn. It borrows nothing else. There is no extension host, no slash-command menu, no shell passthrough, and no update notice. The help names only the keys `tui/keys.ts` defines and the app handles, so every hint it prints is true of this harness.
 - **Themes.** One dark palette, matching `site/index.html`. A theme system before a second user exists is speculative.
 - **Mouse input, overlays, images in the terminal.** None are needed by any of the four concepts tier 3 exists to show.
 - **Moving the dashboard into the package.** It is an interface over a session, and it is served from `site/` or a separate app until there is a reason otherwise.

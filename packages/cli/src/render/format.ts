@@ -102,6 +102,24 @@ export function formatDuration(ms: number): string {
 }
 
 /**
+ * `~/code/project` for a path inside the home directory, absolute otherwise.
+ *
+ * Pi shortens the working directory this way, and the startup block shortens
+ * the profile directory the same way. A path outside the home directory is
+ * left alone rather than rewritten into something a reader cannot paste.
+ */
+export function shortenHome(target: string, home: string | undefined): string {
+	if (home === undefined || home === "") {
+		return target;
+	}
+	const root = home.endsWith("/") ? home.slice(0, -1) : home;
+	if (target === root) {
+		return "~";
+	}
+	return target.startsWith(`${root}/`) ? `~${target.slice(root.length)}` : target;
+}
+
+/**
  * `cwd`-relative when the path is inside it, absolute otherwise.
  *
  * Tools report absolute paths because that is the fact. A terminal wants the

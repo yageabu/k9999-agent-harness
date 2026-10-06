@@ -13,7 +13,7 @@ import { createTextSink, createTranslator, initialRunState, type RenderSink } fr
 import { createTuiApp, type SessionFacts } from "./tui/index.ts";
 import { contextTokens } from "./context.ts";
 import { check, configuredRegistry, currentVersion, PI_FLAGS, render as renderUpdate } from "./update.ts";
-import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
+import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName, sessionName } from "./launch.ts";
 
 const USAGE = `k9999, kula — agent harness
 
@@ -161,20 +161,36 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
  * Gathered here because the command line owns the agent, and the render layer
  * deliberately has no view of the session — a context size is not an event.
  */
-function sessionFacts(harness: Harness, cwd: string, version: string, color?: "auto" | "always" | "never"): SessionFacts {
+function sessionFacts(
+	harness: Harness,
+	cwd: string,
+	version: string,
+	appName: string,
+	color?: "auto" | "always" | "never",
+): SessionFacts {
+	const home = process.env["HOME"] ?? process.env["USERPROFILE"];
 	return {
+		appName,
 		version,
-		profile: harness.profile.config.name,
+		profileId: harness.profile.id,
+		profileName: harness.profile.config.name,
+		profileDir: harness.profile.dir,
 		cwd,
 		model: harness.modelRef,
 		modelName: harness.model.id,
 		provider: String(harness.model.provider),
-		thinking: harness.profile.config.thinkingLevel ?? "(default)",
+		// The agent's own level, which is the profile's or `off`. The profile's
+		// field is optional, and a surface that printed "(default)" would be
+		// describing its own fallback rather than the running session.
+		thinking: harness.agent.state.thinkingLevel,
 		contextWindow: harness.model.contextWindow,
 		// `estimateContextTokens` prefers the last assistant usage and estimates
 		// only what came after it, which is why it is the honest figure rather
 		// than a sum of every message.
 		contextTokens: () => contextTokens(harness.agent.state.messages),
+		tools: harness.tools.map((tool) => ({ name: tool.name, description: tool.description })),
+		skills: harness.skills.map((skill) => ({ name: skill.name, description: skill.description })),
+		...(home === undefined || home === "" ? {} : { home }),
 		...(color === undefined ? {} : { color }),
 	};
 }
@@ -193,7 +209,7 @@ function watch(harness: Harness, sink: RenderSink, cwd: string): { failure?: str
 			model: harness.modelRef,
 			modelName: harness.model.id,
 			provider: String(harness.model.provider),
-			thinking: harness.profile.config.thinkingLevel ?? "(default)",
+			thinking: harness.agent.state.thinkingLevel,
 			cwd: process.cwd(),
 			contextWindow: harness.model.contextWindow,
 		}),
@@ -235,13 +251,16 @@ async function runPrint(harness: Harness, status: { failure?: string }, prompt: 
  * is the right end state, but only once the thing it would select has been seen
  * working on a real terminal.
  */
-async function runTui(harness: Harness, cwd: string, version: string): Promise<number> {
+async function runTui(harness: Harness, cwd: string, version: string, appName: string): Promise<number> {
 	return await new Promise<number>((resolve) => {
 		const app = createTuiApp({
-			facts: sessionFacts(harness, cwd, version, "auto"),
+			facts: sessionFacts(harness, cwd, version, appName, "auto"),
 			onSubmit: async (text) => {
 				await harness.agent.prompt(text);
 			},
+			// The app only calls this while a turn is running, so an idle escape
+			// cannot abort the next one.
+			onInterrupt: () => harness.agent.abort(),
 			onExit: () => {
 				app.stop();
 				resolve(0);
@@ -499,7 +518,7 @@ async function main(): Promise<number> {
 			process.stderr.write("--tui needs a terminal on stdin and stdout\n");
 			return 2;
 		}
-		return await runTui(harness, cwd, await currentVersion());
+		return await runTui(harness, cwd, await currentVersion(), sessionName(process.argv[1], profile.id));
 	}
 
 	const sink = createTextSink({ header: `${profile.config.name} · ${harness.modelRef} · ${cwd}` });

@@ -56,15 +56,21 @@ export function headlessTerminal(columns = 80, rows = 24) {
 /** The facts a surface reports, with everything a test does not care about defaulted. */
 function facts(overrides: Record<string, unknown> = {}) {
 	return {
+		appName: "k9999",
 		version: "0.0.0-test",
-		profile: "Code Agent",
+		profileId: "code",
+		profileName: "Code Agent",
+		profileDir: "/tmp/project/profiles/code",
 		cwd: "/tmp/project",
 		model: "deepseek/deepseek-flash",
 		modelName: "deepseek-flash",
 		provider: "deepseek",
-		thinking: "high",
+		thinking: "medium",
 		contextWindow: 1_000_000,
 		contextTokens: () => 0,
+		tools: [{ name: "read", description: "Read a text file." }],
+		skills: [],
+		home: "/tmp",
 		color: "never" as const,
 		...overrides,
 	};
@@ -199,7 +205,10 @@ test("the TUI starts, accepts input, and draws frames", async () => {
 
 	const frame = term.frame();
 	assert.match(frame, /read/, "the transcript reached the terminal");
-	assert.match(frame, /deepseek-flash/, "the status header is drawn");
+	assert.match(frame, /deepseek-flash/, "the footer is drawn");
+	assert.match(frame, /██╗  ██╗/, "the block logo is drawn above the transcript");
+	assert.match(frame, /v0\.0\.0-test/, "the version rides the last row of the art");
+	assert.match(frame, /\[Tools\]/, "the loaded resources are listed");
 
 	// Typed input arrives one key at a time, which is the case this covers. The
 	// coalesced form is asserted separately below.
@@ -209,6 +218,127 @@ test("the TUI starts, accepts input, and draws frames", async () => {
 	await new Promise((resolve) => setTimeout(resolve, 40));
 	assert.equal(submitted, "hello");
 
+	app.stop();
+});
+
+test("ctrl+o expands the startup help and the resources with it", async () => {
+	const term = headlessTerminal(80, 24);
+	const app = createApp(term, async () => {});
+	app.start();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	assert.match(term.frame(), /Press ctrl\+o to show full startup help/);
+
+	term.clear();
+	term.send("\u000f");
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	const expanded = term.frame();
+	assert.equal(expanded.includes("Press ctrl+o"), false, "the press line is replaced by the full list");
+	assert.match(expanded, /escape to interrupt the turn/);
+	assert.match(expanded, /Read a text file\./, "the tool section expanded too");
+
+	app.stop();
+});
+
+test("escape stops the running turn and does not report it as an error", async () => {
+	const term = headlessTerminal(80, 24);
+	let interrupted = 0;
+	let fail: ((error: Error) => void) | undefined;
+	const app = createTuiApp({
+		terminal: term.terminal,
+		facts: facts(),
+		onSubmit: () =>
+			new Promise<void>((_resolve, reject) => {
+				fail = reject;
+			}),
+		onInterrupt: () => void (interrupted += 1),
+		onExit: () => {},
+	});
+	app.start();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+
+	term.send("hello");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	term.send("\r");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	term.send("\u001b");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(interrupted, 1, "escape reaches the interrupt handler while a turn runs");
+
+	// The abort surfaces as a rejection. It is the user stopping their own turn,
+	// so it must not be rendered as a defect.
+	fail?.(new Error("AbortError: Aborted with Ctrl+C"));
+	term.clear();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	assert.equal(term.frame().includes("AbortError"), false);
+
+	app.stop();
+});
+
+test("escape at an idle prompt does not interrupt anything", async () => {
+	const term = headlessTerminal(80, 24);
+	let interrupted = 0;
+	const app = createTuiApp({
+		terminal: term.terminal,
+		facts: facts(),
+		onSubmit: async () => {},
+		onInterrupt: () => void (interrupted += 1),
+		onExit: () => {},
+	});
+	app.start();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	term.send("\u001b");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(interrupted, 0);
+	app.stop();
+});
+
+test("ctrl+c clears the prompt, and twice leaves", async () => {
+	const term = headlessTerminal(80, 24);
+	let left = 0;
+	const app = createTuiApp({
+		terminal: term.terminal,
+		facts: facts(),
+		onSubmit: async () => {},
+		onExit: () => void (left += 1),
+	});
+	app.start();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+
+	term.send("unfinished");
+	await new Promise((resolve) => setTimeout(resolve, 30));
+	term.send("\u0003");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(left, 0, "the first press clears rather than exits");
+
+	term.send("\u0003");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(left, 1, "a second press within the window exits");
+	app.stop();
+});
+
+test("ctrl+d leaves only when the prompt is empty", async () => {
+	const term = headlessTerminal(80, 24);
+	let left = 0;
+	const app = createTuiApp({
+		terminal: term.terminal,
+		facts: facts(),
+		onSubmit: async () => {},
+		onExit: () => void (left += 1),
+	});
+	app.start();
+	await new Promise((resolve) => setTimeout(resolve, 60));
+
+	term.send("draft");
+	await new Promise((resolve) => setTimeout(resolve, 30));
+	term.send("\u0004");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(left, 0, "a draft is not thrown away by ctrl+d");
+
+	term.send("\u0003");
+	await new Promise((resolve) => setTimeout(resolve, 30));
+	term.send("\u0004");
+	await new Promise((resolve) => setTimeout(resolve, 40));
+	assert.equal(left, 1);
 	app.stop();
 });
 

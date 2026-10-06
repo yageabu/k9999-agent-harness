@@ -34,6 +34,13 @@ export interface TranscriptOptions {
 	readonly budget: () => number;
 	/** Entries kept before the oldest are dropped. Bounds memory in a long session. */
 	readonly maxEntries?: number;
+	/**
+	 * Rendered above every entry, and scrolled away with them.
+	 *
+	 * The startup block goes here rather than in a fixed panel: it is worth
+	 * five lines once, and five lines forever is a different thing.
+	 */
+	readonly leading?: Component;
 	/** Called when a turn arrives, so a status header can follow the totals. */
 	readonly onTurn?: (state: RunState) => void;
 }
@@ -50,12 +57,14 @@ export class TranscriptView implements Component {
 	private readonly style: LineStyle;
 	private readonly budget: () => number;
 	private readonly maxEntries: number;
+	private readonly leading: Component | undefined;
 	private readonly onTurn: ((state: RunState) => void) | undefined;
 
 	constructor(options: TranscriptOptions) {
 		this.style = options.style;
 		this.budget = options.budget;
 		this.maxEntries = options.maxEntries ?? 2000;
+		this.leading = options.leading;
 		this.onTurn = options.onTurn;
 	}
 
@@ -137,11 +146,17 @@ export class TranscriptView implements Component {
 	}
 
 	/** Called by the TUI when the theme changes or a re-render from scratch is needed. */
-	invalidate(): void {}
+	invalidate(): void {
+		this.leading?.invalidate();
+	}
 
 	render(width: number): string[] {
 		const usable = Math.max(1, width);
 		const lines: string[] = [];
+
+		for (const line of this.leading?.render(usable) ?? []) {
+			lines.push(...this.fit(line, usable));
+		}
 
 		for (const entry of this.entries) {
 			if (entry.kind === "block") {

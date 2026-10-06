@@ -43,6 +43,14 @@ export interface Harness {
 	modelRef: string;
 	systemPrompt: string;
 	tools: AnyTool[];
+	/**
+	 * The skills the prompt advertises, resolved from disk.
+	 *
+	 * Returned rather than left inside `systemPrompt` because a surface that
+	 * reports what loaded has to name them, and re-resolving them there would
+	 * be a second answer to a question already answered.
+	 */
+	skills: readonly SkillSummary[];
 }
 
 /**
@@ -89,5 +97,5 @@ export async function createHarness(options: HarnessOptions): Promise<Harness> {
 		agent.subscribe(options.onEvent);
 	}
 
-	return { agent, profile, model, modelRef, systemPrompt, tools };
+	return { agent, profile, model, modelRef, systemPrompt, tools, skills };
 }

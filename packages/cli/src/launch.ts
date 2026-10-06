@@ -31,17 +31,38 @@ export const DEFAULT_PROFILE = "code";
  * for a cosmetic reason.
  */
 export function profileForLaunchName(argv1: string | undefined): string {
-	if (argv1 === undefined) {
-		return DEFAULT_PROFILE;
-	}
-	const command = path.basename(argv1).replace(/\.(?:js|mjs|cjs|ts)$/, "");
-	const match = LAUNCH_NAMES.find((entry) => entry.command === command);
-	return match?.profileId ?? DEFAULT_PROFILE;
+	const command = typedCommand(argv1);
+	return LAUNCH_NAMES.find((entry) => entry.command === command)?.profileId ?? DEFAULT_PROFILE;
 }
 
 /** The launch name that defaults to a profile, when one exists. */
 export function launchNameFor(profileId: string): string | undefined {
 	return LAUNCH_NAMES.find((entry) => entry.profileId === profileId)?.command;
+}
+
+/**
+ * The name a session introduces itself with.
+ *
+ * Three answers, in order. The command that was typed, when it is one of the
+ * launch names. The command that would have selected this profile, when the
+ * entry was run by path, which is how `npm run` and the test suite do it. The
+ * product name last, so a surface never prints `index.ts` as the program's
+ * name.
+ *
+ * The middle answer is what makes `npm run kula` show KULA. Without it the dev
+ * script would run the entry by path and introduce the data profile as k9999.
+ */
+export function sessionName(argv1: string | undefined, profileId: string): string {
+	return typedCommand(argv1) ?? launchNameFor(profileId) ?? "k9999";
+}
+
+/** The recognized launch name in `argv[1]`, if there is one. */
+function typedCommand(argv1: string | undefined): string | undefined {
+	if (argv1 === undefined) {
+		return undefined;
+	}
+	const command = path.basename(argv1).replace(/\.(?:js|mjs|cjs|ts)$/, "");
+	return LAUNCH_NAMES.some((entry) => entry.command === command) ? command : undefined;
 }
 
 /** The launch names, for help text and `--list`. */

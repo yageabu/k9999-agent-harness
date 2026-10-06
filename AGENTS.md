@@ -12,6 +12,7 @@ The provider reads `DEEPSEEK_API_KEY` from the environment. There is no config f
 cp .env.example .env
 # put the key in it, then:
 npm run k9999 -- --show          # no network needed
+npm run kula -- --show           # the data profile, same entry point
 npm run k9999 -- --print "hello" # a real call
 ```
 
@@ -115,7 +116,7 @@ Two surfaces share one transcript, so the formatting lives in one place:
 - `packages/cli/src/render/translate.ts` — `AgentEvent` to `RenderItem`.
 - `packages/cli/src/render/layout.ts` — **the lines themselves**. Both the text sink and the TUI consume this, because two renderings of one event would drift.
 - `packages/cli/src/render/text-sink.ts` — streamed, incremental, one item at a time. What it adds is a cursor across two streams.
-- `packages/cli/src/tui/` — `TranscriptView` (accumulates items, returns the *last* N lines), `StatusBar`, and the app.
+- `packages/cli/src/tui/` — `TranscriptView` (accumulates items, returns the *last* N lines), `StartupHeader` (the block above them, with the art in `logo.ts`), `Footer` (the two lines below the editor), `keys.ts`, `git.ts`, and the app.
 
 Rules that are easy to break:
 
@@ -124,9 +125,11 @@ Rules that are easy to break:
 - **One logical cursor across two streams.** Print mode sends the answer to stdout and activity to stderr, so a newline must follow whichever stream was written to last.
 - **`closeInline` uses `breakLine`, never a bare `\n`.** Text that already ended its line must not gain a blank one.
 - **The transcript returns the newest lines.** `VStack` slices children from the start, so returning the whole history would show the oldest and hide the newest.
-- **A VStack does not allocate height.** Each child returns its natural size, so the transcript reads the terminal to fit itself.
+- **A VStack does not allocate height.** Each child returns its natural size, so the transcript reads the terminal to fit itself, and `CHROME_ROWS` in `tui/app.ts` must count the editor and the footer.
+- **The startup block is a transcript entry, not a panel.** It goes in through `TranscriptView`'s `leading`, so it scrolls away. A logo that stays costs its lines forever.
+- **A key hint is a claim about behavior.** The text comes from `KEYS` and `EXIT_COMMANDS` in `tui/keys.ts`, which the input listener also reads. A key that is printed but not handled, or handled but not printed, is a bug rather than a polish item.
 - **The editor needs `tui.setFocus(editor)`.** Without it, typing does nothing and nothing reports why.
-- **Paths are absolute in the data and short on screen.** Tools report facts; `shorten()` is display only.
+- **Paths are absolute in the data and short on screen.** Tools report facts; `shorten()` and `shortenHome()` are display only.
 - **No diff library.** An edit is an exact string replacement, so the tool already holds both sides.
 
 ### Node runs these `.ts` files directly, with limits
