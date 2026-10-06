@@ -73,16 +73,35 @@ type ClaimResult =
 
 ### Suspension
 
-The interaction is written durably, and the turn suspends rather than awaiting. `AgentHarness` already provides the substrate:
+The interaction is written durably, and the turn suspends rather than awaiting.
 
-| Need | Provided |
+> **Correction, and it changes the plan.** This section previously said to
+graduate from `Agent` to `AgentHarness`, and listed the primitives it would
+provide: a durable `suspended` run outcome, `resume()`, `getLastResult()`, and an
+inbox with distinct `steer`/`followUp`/`nextRun` semantics.
+>
+> **`AgentHarness` is not published.** `pi-agent-core` 1.0.2 and 1.0.4 both
+> export exactly five modules — `agent`, `agent-loop`, `proxy`, `stream-fn`,
+> `types` — and no package under `@earendil-works` contains the name. The
+> `harness/` subtree with `agent-harness.ts` and `compaction/` exists in the
+> 0.84.2 source checkout and was removed before 1.0.x shipped. The table above
+> described a source tree this project does not depend on.
+>
+> The reading was taken from a repository checkout rather than from the
+> installed package, which is the same mistake as assuming a feature from a
+> version number. `packages/cli/src/context.ts` carries the smaller version of
+> it: a context-token helper written locally because 1.0.2 publishes none.
+
+The substrate has to come from somewhere, and there are three answers:
+
+| Option | Cost |
 |---|---|
-| Suspend a turn without holding a stack frame | `RunOutcome` variant `{ kind: "suspended", reason: "deferred" }` |
-| Continue after the answer arrives | `resume()` |
-| Recover an outcome after the process died | `getLastResult()`, reading the `lane.lastResult` register |
-| A queue with distinct semantics | `steer()`, `followUp()`, `nextRun()`, `cancelQueued()` |
+| **Build the durable layer here.** A `Storage` seam over entries and registers, an operation state that is total after every transition, and a `resume()` that reads it. This is the work `AgentHarness` was going to do for us: the largest item in the project so far | Weeks, and it is the part every harness gets wrong the first time |
+| **Depend on a version that has it.** Nothing published does. `0.74`–`0.80` are on npm; whether any carries `harness/` is unchecked and would be a step backwards in the model layer | A version pin against the rest of the project, for an unverified asset |
+| **Narrow the spec.** Suspension survives process death only if the durable layer exists. Without it, the honest version is: interactions are records with deadlines and defaults, answered from any channel, and a turn that is interrupted is **lost** rather than resumed — with that stated in the interface rather than implied | Loses the property the WeChat case actually needed |
 
-This is the reason to graduate from `Agent` to `AgentHarness`. It is recorded as a decision with its own cost, not as a refactor.
+The first is the only one that delivers what this spec is for. Recording it here
+rather than in the plan means the next person reads the cost before the design.
 
 ## Default actions
 

@@ -152,19 +152,21 @@ The author's conclusion: the skill wins only on its own linter, and more than fi
 
 ## 0009 — The core never blocks on a human
 
-**Status:** accepted. Supersedes the `Agent` choice in 0001 for anything long-running.
+**Status:** accepted, with the substrate corrected below.
 
 **Context.** A kernel that asks a human by awaiting a promise has exactly one place the answer can come from. Every other channel waits for a turn that will never finish. Pi's WeChat bridge stalls for this reason: a confirmation in the terminal, nobody at the terminal, and the WeChat side waits forever. An unattended agent that blocks is also indistinguishable from one that crashed.
 
-`AgentHarness` in `pi-agent-core` already supplies the substrate: a durable `{ kind: "suspended", reason: "deferred" }` run outcome, `resume()`, `getLastResult()` for reading the outcome a dead process never delivered, and an inbox with distinct `steer`/`followUp`/`nextRun` semantics. It has no human-interaction primitive, which is the part K9999 adds.
+This record originally said `AgentHarness` already supplies the substrate and that the decision was to adopt it. **That was wrong.** `AgentHarness` is not published: `pi-agent-core` 1.0.2 and 1.0.4 each export five modules — `agent`, `agent-loop`, `proxy`, `stream-fn`, `types` — and no package under `@earendil-works` contains the name. The `harness/` subtree exists in a 0.84.2 source checkout and was gone before 1.0.x shipped.
 
-**Decision.** Every human interaction is a durable record with an address, a deadline, and a default action. The `Agent` class is replaced by `AgentHarness` for anything that can outlive a process.
+The error was reading a repository checkout rather than the installed package. It is the same class as trusting a version number, and it is worth the ink here because it is the mistake this project keeps warning about.
 
-**Consequences.** Durable state becomes mandatory. `AgentHarness` requires a `Storage` backend over three forms — immutable entries, mutable registers, and an append-only usage ledger — which moves the project from a stateless single process to something that must choose and ship a store. That is a deployment question, not a refactor, and it is the cost of this decision.
+**Decision.** Every human interaction is a durable record with an address, a deadline, and a default action, and the substrate that makes it durable is **built here** rather than adopted. A `Storage` seam over immutable entries and mutable registers, an operation state that is total after every transition, and a `resume()` that reads it.
 
-In exchange, three failures stop being possible: a blocked turn, a lost answer after a crash, and a redelivered message starting a second turn.
+**Consequences.** This is now the largest single item in the project, and it is coupled to [SPEC 0001](specs/0001-non-blocking-interaction.md), which narrows to interactions-as-records until it lands. Durable state becomes mandatory, which moves the project from a stateless single process to one that must choose and ship a store — a deployment question, not a refactor.
 
-**Revisit when** the storage requirement blocks a deployment that would otherwise work — a single-file binary with no writable state, for instance.
+In exchange, three failures stop being possible once it is built: a blocked turn, a lost answer after a crash, and a redelivered message starting a second turn. Until then, an interrupted turn is lost, and the interface should say so rather than imply otherwise.
+
+**Revisit when** something published supplies the same substrate. The check is what the installed package exports, not what a checkout contains.
 
 **Rejected.** Fixing this inside a channel integration would leave the block in the core, where every future channel inherits it. A timeout-only fix converts a hang into a failure without ever recovering the answer.
 

@@ -26,7 +26,7 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 
 | # | Spec | Status | Depends on | First move |
 |---|---|---|---|---|
-| 0001 | [Non-blocking interaction](0001-non-blocking-interaction.md) | `accepted` | — | `Agent` → `AgentHarness` on one channel |
+| 0001 | [Non-blocking interaction](0001-non-blocking-interaction.md) | `accepted` | — | Interactions as records with deadlines and defaults. The durable substrate is built here, not adopted — see the correction in the spec |
 | 0002 | [Reversibility, not modes](0002-reversibility-not-modes.md) | `accepted` | 0001 | `reversibility` on the tool registry |
 | 0003 | [An optional decision layer](0003-optional-decision-layer.md) | `accepted` | 0004 | Probe latency and cost before wiring it in |
 | 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
