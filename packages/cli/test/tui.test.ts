@@ -52,6 +52,28 @@ export function headlessTerminal(columns = 80, rows = 24) {
 	};
 }
 
+
+/** The facts a surface reports, with everything a test does not care about defaulted. */
+function facts(overrides: Record<string, unknown> = {}) {
+	return {
+		version: "0.0.0-test",
+		profile: "Code Agent",
+		cwd: "/tmp/project",
+		model: "deepseek/deepseek-flash",
+		modelName: "deepseek-flash",
+		provider: "deepseek",
+		thinking: "high",
+		contextWindow: 1_000_000,
+		contextTokens: () => 0,
+		color: "never" as const,
+		...overrides,
+	};
+}
+
+function createApp(term: ReturnType<typeof headlessTerminal>, onSubmit: (text: string) => Promise<void>) {
+	return createTuiApp({ terminal: term.terminal, facts: facts(), onSubmit, onExit: () => {} });
+}
+
 function view(budget = 20) {
 	const style = lineStyle(createStyler(false), "/tmp/project", 24);
 	return new TranscriptView({ style, budget: () => budget });
@@ -149,7 +171,14 @@ test("a diff reaches the transcript with its line number", () => {
 
 test("the summary line arrives through end()", () => {
 	const transcript = view();
-	const state = { ...initialRunState("deepseek/deepseek-flash", "/tmp/project"), turns: 2, toolCalls: 3 };
+	const state = { ...initialRunState({
+		model: "deepseek/deepseek-flash",
+		modelName: "deepseek-flash",
+		provider: "deepseek",
+		thinking: "high",
+		cwd: "/tmp/project",
+		contextWindow: 1_000_000,
+	}), turns: 2, toolCalls: 3 };
 	transcript.end(state);
 	assert.match(transcript.render(80).join("\n"), /2 turns · 3 tool calls/);
 });
@@ -161,13 +190,8 @@ test("the summary line arrives through end()", () => {
 test("the TUI starts, accepts input, and draws frames", async () => {
 	const term = headlessTerminal(80, 24);
 	let submitted: string | undefined;
-	const app = createTuiApp({
-		terminal: term.terminal,
-		cwd: "/tmp/project",
-		color: "never",
-		onSubmit: async (value) => void (submitted = value),
-		onExit: () => {},
-	});
+	const instance = createApp(term, async (value) => void (submitted = value));
+	const app = instance;
 
 	app.sink.emit({ kind: "toolCall", id: "c", name: "read", summary: "counter.mjs" });
 	app.start();
@@ -175,7 +199,7 @@ test("the TUI starts, accepts input, and draws frames", async () => {
 
 	const frame = term.frame();
 	assert.match(frame, /read/, "the transcript reached the terminal");
-	assert.match(frame, /k9999/, "the status hint is drawn");
+	assert.match(frame, /deepseek-flash/, "the status header is drawn");
 
 	// Typed input arrives one key at a time, which is the case this covers. The
 	// coalesced form is asserted separately below.
@@ -196,13 +220,8 @@ test("text and Enter in one chunk is treated as a paste, and does not submit", a
 	// worth knowing about rather than one worth working around.
 	const term = headlessTerminal(80, 24);
 	let submitted: string | undefined;
-	const app = createTuiApp({
-		terminal: term.terminal,
-		cwd: "/tmp/project",
-		color: "never",
-		onSubmit: async (value) => void (submitted = value),
-		onExit: () => {},
-	});
+	const instance = createApp(term, async (value) => void (submitted = value));
+	const app = instance;
 	app.start();
 	await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -215,14 +234,16 @@ test("text and Enter in one chunk is treated as a paste, and does not submit", a
 
 test("the summary reaches the terminal when the run ends", async () => {
 	const term = headlessTerminal(80, 24);
-	const app = createTuiApp({
-		terminal: term.terminal,
+	const instance = createApp(term, async () => {});
+	const app = instance;
+	app.sink.end({ ...initialRunState({
+		model: "deepseek/deepseek-flash",
+		modelName: "deepseek-flash",
+		provider: "deepseek",
+		thinking: "high",
 		cwd: "/tmp/project",
-		color: "never",
-		onSubmit: async () => {},
-		onExit: () => {},
-	});
-	app.sink.end({ ...initialRunState("m", "/tmp/project"), turns: 1, toolCalls: 2, inputTokens: 1834 });
+		contextWindow: 1_000_000,
+	}), turns: 1, toolCalls: 2, inputTokens: 1834 });
 	app.start();
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	assert.match(term.frame(), /1 turn · 2 tool calls · 1\.8k in/);

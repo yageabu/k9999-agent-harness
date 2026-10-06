@@ -1,73 +1,44 @@
 import {
 	Editor,
 	ProcessTerminal,
-	type Component,
 	type Terminal,
 	TuiMainScreen,
 	VStack,
 } from "@earendil-works/pi-tui";
 import { lineStyle } from "../render/layout.ts";
 import type { ColorMode } from "../render/format.ts";
-import type { RenderItem, RenderSink, RunState } from "../render/vocabulary.ts";
+import { initialRunState, type RenderItem, type RenderSink, type RunState } from "../render/vocabulary.ts";
+import { bannerLines, StatusHeader } from "./header.ts";
 import { createTuiTheme, type TuiTheme } from "./theme.ts";
 import { TranscriptView } from "./transcript.ts";
 
 /**
- * Rows the editor, the status bar, and the blank lines between them occupy.
+ * Rows the header, the editor, and the status line occupy.
  *
  * The transcript fits itself to `rows - chrome` because a VStack does not
  * allocate height: it stacks each child at its natural size. Getting this wrong
  * shows up as the bottom of the screen scrolling away.
  */
-const CHROME_ROWS = 4;
+const CHROME_ROWS = 7;
 
-/**
- * The status bar: what the agent is doing, in one line under the editor.
- *
- * This is the smallest honest version of the dashboard. It shows the four
- * numbers a session is judged by, and nothing else, because a line is all the
- * room there is until the full-screen panel exists.
- */
-class StatusBar implements Component {
-	private state: RunState | undefined;
-	private message = "";
-	private readonly theme: TuiTheme;
-	private readonly hint: string;
-
-	// Explicit fields and assignment rather than parameter properties: Node's
-	// strip-only TypeScript mode removes types without generating code, so
-	// `constructor(private readonly x)` is a syntax error at runtime.
-	constructor(theme: TuiTheme, hint: string) {
-		this.theme = theme;
-		this.hint = hint;
-	}
-
-	setState(state: RunState): void {
-		this.state = state;
-	}
-
-	setMessage(message: string): void {
-		this.message = message;
-	}
-
-	invalidate(): void {}
-
-	render(width: number): string[] {
-		const s = this.theme.styler;
-		const left = this.state
-			? `${this.state.model}  ${this.state.turns}t  ${this.state.toolCalls}tools`
-			: this.hint;
-		const right = this.message;
-		const gap = Math.max(1, width - left.length - right.length);
-		return [`${s("dim")(left)}${" ".repeat(gap)}${s("red")(right)}`.slice(0, Math.max(1, width))];
-	}
+export interface SessionFacts {
+	readonly version: string;
+	readonly profile: string;
+	readonly cwd: string;
+	readonly model: string;
+	readonly modelName: string;
+	readonly provider: string;
+	readonly thinking: string;
+	readonly contextWindow: number;
+	/** Read from the agent, which owns the session. The render layer has no view of it. */
+	readonly contextTokens: () => number;
+	readonly color?: ColorMode;
 }
 
 export interface TuiAppOptions {
 	/** Injected by tests. Defaults to a real terminal. */
 	readonly terminal?: Terminal;
-	readonly color?: ColorMode;
-	readonly cwd: string;
+	readonly facts: SessionFacts;
 	/** Called with the editor's text on submit. The promise is awaited before the next prompt. */
 	readonly onSubmit: (text: string) => Promise<void>;
 	readonly onExit: () => void;
@@ -82,26 +53,50 @@ export interface TuiApp {
 }
 
 /**
- * The interactive transcript TUI: scrollback, a multi-line editor, and a status
- * line.
+ * The interactive transcript TUI: a status header, scrollback, and a multi-line
+ * editor.
  *
  * Main-screen rather than alt-screen, so the transcript lands in the terminal's
  * scrollback and can still be read after the process exits.
  */
 export function createTuiApp(options: TuiAppOptions): TuiApp {
+	const { facts } = options;
 	const terminal = options.terminal ?? new ProcessTerminal();
-	const theme = createTuiTheme(options.color ?? "auto");
+	const theme = createTuiTheme(facts.color ?? "auto");
 	const tui = new TuiMainScreen(terminal, false);
 
-	const transcript = new TranscriptView({
-		style: lineStyle(theme.styler, options.cwd, options.maxDiffLines ?? 24),
-		budget: () => Math.max(4, terminal.rows - CHROME_ROWS),
+	const state = initialRunState({
+		model: facts.model,
+		modelName: facts.modelName,
+		provider: facts.provider,
+		thinking: facts.thinking,
+		cwd: facts.cwd,
+		contextWindow: facts.contextWindow,
 	});
 
+	const header = new StatusHeader(state, theme.styler);
+	const transcript = new TranscriptView({
+		style: lineStyle(theme.styler, facts.cwd, options.maxDiffLines ?? 24),
+		budget: () => Math.max(4, terminal.rows - CHROME_ROWS),
+		onTurn: (next: RunState) => header.setState(next),
+	});
 	const editor = new Editor(tui, theme.editor, { paddingX: 1 });
-	const status = new StatusBar(theme, "k9999 · /exit to quit");
 
-	const root = new VStack([transcript, editor, status], { gap: 0 });
+	transcript.appendLines(
+		bannerLines(
+			{
+				version: facts.version,
+				profile: facts.profile,
+				model: facts.model,
+				thinking: facts.thinking,
+				cwd: facts.cwd,
+			},
+			theme.styler,
+			terminal.columns,
+		),
+	);
+
+	const root = new VStack([header, transcript, editor], { gap: 0 });
 	tui.addChild(root);
 	// Without focus the editor never sees a keystroke. The TUI does not pick a
 	// focusable child on its own.
@@ -116,9 +111,11 @@ export function createTuiApp(options: TuiAppOptions): TuiApp {
 			options.onExit();
 			return;
 		}
-		status.setMessage("");
 		void options.onSubmit(trimmed).catch((error: unknown) => {
-			status.setMessage(error instanceof Error ? error.message : String(error));
+			transcript.append({
+				kind: "error",
+				message: error instanceof Error ? error.message : String(error),
+			});
 			tui.requestRender();
 		});
 	};
@@ -127,14 +124,11 @@ export function createTuiApp(options: TuiAppOptions): TuiApp {
 		name: "tui",
 		emit(item: RenderItem): void {
 			transcript.append(item);
-			if (item.kind === "turn") {
-				status.setState(item.state);
-			}
 			tui.requestRender();
 		},
 		end(state: RunState): void {
 			transcript.end(state);
-			status.setState(state);
+			header.setState(state);
 			tui.requestRender();
 		},
 	};
@@ -149,3 +143,5 @@ export function createTuiApp(options: TuiAppOptions): TuiApp {
 		},
 	};
 }
+
+export type { TuiTheme };

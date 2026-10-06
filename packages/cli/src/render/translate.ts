@@ -111,6 +111,17 @@ export function summarizeResult(
 	return oneLine(firstLine(text) || "done");
 }
 
+export interface TranslatorDeps {
+	/**
+	 * Tokens currently in the context.
+	 *
+	 * A callback rather than a value because it is a property of the whole
+	 * session and the render layer has no view of the session. The command line
+	 * owns the agent and answers this.
+	 */
+	readonly contextTokens?: () => number;
+}
+
 export interface Translator {
 	readonly state: RunState;
 	translate(event: AgentEvent): RenderItem[];
@@ -123,7 +134,7 @@ export interface Translator {
  * surface consumes it, and because a recorder makes it testable without a
  * terminal.
  */
-export function createTranslator(initial: RunState): Translator {
+export function createTranslator(initial: RunState, deps: TranslatorDeps = {}): Translator {
 	let state = initial;
 
 	return {
@@ -166,6 +177,9 @@ export function createTranslator(initial: RunState): Translator {
 							...state,
 							inputTokens: state.inputTokens + usage.input + usage.cacheRead + usage.cacheWrite,
 							outputTokens: state.outputTokens + usage.output,
+							cacheRead: state.cacheRead + usage.cacheRead,
+							cacheWrite: state.cacheWrite + usage.cacheWrite,
+							reasoningTokens: state.reasoningTokens + (usage.reasoning ?? 0),
 							costUSD: state.costUSD + usage.cost.total,
 						};
 					}
@@ -197,7 +211,11 @@ export function createTranslator(initial: RunState): Translator {
 				}
 
 				case "turn_end": {
-					state = { ...state, turns: state.turns + 1 };
+					state = {
+						...state,
+						turns: state.turns + 1,
+						...(deps.contextTokens === undefined ? {} : { contextTokens: deps.contextTokens() }),
+					};
 					items.push({ kind: "turn", state });
 					break;
 				}

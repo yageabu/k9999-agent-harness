@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.5.0
+
+### Added
+
+- **A startup banner.** The mark — the square, the K, the rule, the four nines —
+  beside the version, profile, model, and working directory. It goes into the
+  transcript rather than the header, so it scrolls away: a five-line logo that
+  never leaves costs five lines of a terminal forever. The mark is dropped when
+  the text beside it would not fit, decided from the longest line rather than a
+  threshold, because how much room the text needs depends on the directory.
+- **A status header.** The model, provider, and thinking level, a rule, then one
+  line of live figures:
+
+  ```
+   deepseek-flash  Deepseek  high
+  ────────────────────────────────────────────────────
+   upstream | 91.3%/1.0M | ↑323k ↓678k c 87.3% | $0.0001
+  ```
+
+  Context is what is *left*, against the ceiling. The cache share is absent when
+  the provider reports no cache reads, rather than zero, because zero reads as
+  "no cache hits" when it means "not reported". Reasoning tokens appear only when
+  a provider reports the split. Cost appears once anything has been spent.
+
+### Notes
+
+- The context figure prefers the last assistant message's reported usage, which
+  is the prompt size the provider actually counted, and estimates only what came
+  after it. That helper is written here because `pi-agent-core@1.0.2` — the
+  version this depends on — does not publish one. Its `dist` holds `agent`,
+  `agent-loop`, `proxy`, `stream-fn`, and `types`, and nothing about sessions,
+  compaction, or context accounting.
+- Deliberately not shown: a channel indicator and an `(auto)` compaction marker.
+  Neither exists yet, and a status line that reports what is not built is a
+  status line nobody trusts.
+
 ## 0.4.1
 
 ### Fixed

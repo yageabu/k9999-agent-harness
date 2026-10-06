@@ -59,15 +59,23 @@ export function createStyler(enabled: boolean): Styler {
 	return Object.assign(styler, { enabled });
 }
 
-/** `1834` -> `1.8k`. Token counts are read at a glance, not audited. */
+/**
+ * `1834` -> `1.8k`, `323000` -> `323k`.
+ *
+ * A trailing `.0` is dropped: a measured figure of three hundred and twenty
+ * three thousand reads as `323k`, and `323.0k` claims a precision the number
+ * does not have. `1000000` becomes `1M` for the same reason.
+ */
 export function compactNumber(value: number): string {
+	const scale = (scaled: number, suffix: string): string =>
+		`${scaled.toFixed(1).replace(/\.0$/, "")}${suffix}`;
 	if (value < 1000) {
 		return String(Math.round(value));
 	}
 	if (value < 1_000_000) {
-		return `${(value / 1000).toFixed(1)}k`;
+		return scale(value / 1000, "k");
 	}
-	return `${(value / 1_000_000).toFixed(1)}M`;
+	return scale(value / 1_000_000, "M");
 }
 
 /** Sub-cent costs are the normal case, so three significant digits, not two decimals. */

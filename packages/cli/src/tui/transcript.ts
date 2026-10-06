@@ -34,6 +34,8 @@ export interface TranscriptOptions {
 	readonly budget: () => number;
 	/** Entries kept before the oldest are dropped. Bounds memory in a long session. */
 	readonly maxEntries?: number;
+	/** Called when a turn arrives, so a status header can follow the totals. */
+	readonly onTurn?: (state: RunState) => void;
 }
 
 /**
@@ -48,11 +50,13 @@ export class TranscriptView implements Component {
 	private readonly style: LineStyle;
 	private readonly budget: () => number;
 	private readonly maxEntries: number;
+	private readonly onTurn: ((state: RunState) => void) | undefined;
 
 	constructor(options: TranscriptOptions) {
 		this.style = options.style;
 		this.budget = options.budget;
 		this.maxEntries = options.maxEntries ?? 2000;
+		this.onTurn = options.onTurn;
 	}
 
 	append(item: RenderItem): void {
@@ -71,6 +75,7 @@ export class TranscriptView implements Component {
 				break;
 			case "turn":
 				this.pushBlock([turnLine(item.state, this.style)]);
+				this.onTurn?.(item.state);
 				break;
 			case "error":
 				this.pushBlock(errorLines(item.message, this.style));
@@ -90,6 +95,17 @@ export class TranscriptView implements Component {
 				]);
 				break;
 		}
+	}
+
+	/**
+	 * Append lines that are already formatted, such as the startup banner.
+	 *
+	 * A banner is not a `RenderItem`: nothing that happened produced it, and
+	 * giving it a variant would put presentation in a vocabulary that exists to
+	 * keep presentation out.
+	 */
+	appendLines(lines: readonly string[]): void {
+		this.pushBlock([...lines]);
 	}
 
 	end(state: RunState): void {

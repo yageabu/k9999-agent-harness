@@ -7,25 +7,61 @@ import type { FileChange } from "@k9999/core";
  * a turn, a dashboard row, or nothing at all.
  */
 export interface RunState {
+	/** The reference a provider is addressed by: `deepseek/deepseek-flash`. */
 	readonly model: string;
+	/** The model id alone, which is what a narrow status line has room for. */
+	readonly modelName: string;
+	readonly provider: string;
+	readonly thinking: string;
 	readonly cwd: string;
 	readonly turns: number;
 	readonly toolCalls: number;
 	readonly inputTokens: number;
 	readonly outputTokens: number;
+	/** Prompt tokens the provider served from its cache. Only some report this. */
+	readonly cacheRead: number;
+	readonly cacheWrite: number;
+	/** Reasoning tokens, which are a subset of output. Undefined when unreported. */
+	readonly reasoningTokens: number;
 	readonly costUSD: number;
+	/**
+	 * Tokens currently in the context, and the model's ceiling.
+	 *
+	 * Read from the agent at each turn rather than derived from events, because
+	 * no event carries it: the number is a property of the whole session, and
+	 * the render layer has no view of the session.
+	 */
+	readonly contextTokens: number;
+	readonly contextWindow: number;
 	readonly startedAt: number;
 }
 
-export function initialRunState(model: string, cwd: string): RunState {
+export interface RunStateSeed {
+	readonly model: string;
+	readonly modelName: string;
+	readonly provider: string;
+	readonly thinking: string;
+	readonly cwd: string;
+	readonly contextWindow: number;
+}
+
+export function initialRunState(seed: RunStateSeed): RunState {
 	return {
-		model,
-		cwd,
+		model: seed.model,
+		modelName: seed.modelName,
+		provider: seed.provider,
+		thinking: seed.thinking,
+		cwd: seed.cwd,
 		turns: 0,
 		toolCalls: 0,
 		inputTokens: 0,
 		outputTokens: 0,
+		cacheRead: 0,
+		cacheWrite: 0,
+		reasoningTokens: 0,
 		costUSD: 0,
+		contextTokens: 0,
+		contextWindow: seed.contextWindow,
 		startedAt: Date.now(),
 	};
 }

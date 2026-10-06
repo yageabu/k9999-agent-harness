@@ -10,7 +10,8 @@ import {
 	resolveProfilesDir,
 } from "@k9999/core";
 import { createTextSink, createTranslator, initialRunState, type RenderSink } from "./render/index.ts";
-import { createTuiApp } from "./tui/index.ts";
+import { createTuiApp, type SessionFacts } from "./tui/index.ts";
+import { contextTokens } from "./context.ts";
 import { check, configuredRegistry, currentVersion, PI_FLAGS, render as renderUpdate } from "./update.ts";
 import { DEFAULT_PROFILE, launchNameFor, launchSummary, profileForLaunchName } from "./launch.ts";
 
@@ -155,6 +156,30 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
 }
 
 /**
+ * The facts a surface reports about a session.
+ *
+ * Gathered here because the command line owns the agent, and the render layer
+ * deliberately has no view of the session — a context size is not an event.
+ */
+function sessionFacts(harness: Harness, cwd: string, version: string, color?: "auto" | "always" | "never"): SessionFacts {
+	return {
+		version,
+		profile: harness.profile.config.name,
+		cwd,
+		model: harness.modelRef,
+		modelName: harness.model.id,
+		provider: String(harness.model.provider),
+		thinking: harness.profile.config.thinkingLevel ?? "(default)",
+		contextWindow: harness.model.contextWindow,
+		// `estimateContextTokens` prefers the last assistant usage and estimates
+		// only what came after it, which is why it is the honest figure rather
+		// than a sum of every message.
+		contextTokens: () => contextTokens(harness.agent.state.messages),
+		...(color === undefined ? {} : { color }),
+	};
+}
+
+/**
  * Feed agent events through the translator into the sink.
  *
  * The failure flag is tracked here rather than inside the sink because the
@@ -162,7 +187,18 @@ function parseArgs(argv: readonly string[], defaultProfile: string): Args {
  * know it was driving a command line.
  */
 function watch(harness: Harness, sink: RenderSink, cwd: string): { failure?: string } {
-	const translator = createTranslator(initialRunState(harness.modelRef, cwd));
+	void cwd;
+	const translator = createTranslator(
+		initialRunState({
+			model: harness.modelRef,
+			modelName: harness.model.id,
+			provider: String(harness.model.provider),
+			thinking: harness.profile.config.thinkingLevel ?? "(default)",
+			cwd: process.cwd(),
+			contextWindow: harness.model.contextWindow,
+		}),
+		{ contextTokens: () => contextTokens(harness.agent.state.messages) },
+	);
 	const status: { failure?: string } = {};
 
 	harness.agent.subscribe((event) => {
@@ -199,11 +235,10 @@ async function runPrint(harness: Harness, status: { failure?: string }, prompt: 
  * is the right end state, but only once the thing it would select has been seen
  * working on a real terminal.
  */
-async function runTui(harness: Harness, cwd: string, color: "auto" | "always" | "never"): Promise<number> {
+async function runTui(harness: Harness, cwd: string, version: string): Promise<number> {
 	return await new Promise<number>((resolve) => {
 		const app = createTuiApp({
-			cwd,
-			color,
+			facts: sessionFacts(harness, cwd, version, "auto"),
 			onSubmit: async (text) => {
 				await harness.agent.prompt(text);
 			},
@@ -464,7 +499,7 @@ async function main(): Promise<number> {
 			process.stderr.write("--tui needs a terminal on stdin and stdout\n");
 			return 2;
 		}
-		return await runTui(harness, cwd, "auto");
+		return await runTui(harness, cwd, await currentVersion());
 	}
 
 	const sink = createTextSink({ header: `${profile.config.name} · ${harness.modelRef} · ${cwd}` });

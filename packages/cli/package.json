@@ -1,6 +1,6 @@
 {
 	"name": "k9999",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "An agent harness that never blocks on a human. Two agents — k9999 writes code, kula reads data — built on @earendil-works/pi-agent-core.",
 	"type": "module",
 	"license": "MIT",
