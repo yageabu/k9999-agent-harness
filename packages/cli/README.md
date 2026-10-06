@@ -37,20 +37,17 @@ Node 22.19 or newer.
 
 ## Set the API key
 
-The default provider reads `DEEPSEEK_API_KEY` from the environment. There is no config file and no command that sets one once a session is running, so the two surfaces differ in when you can supply it.
+The default provider reads `DEEPSEEK_API_KEY` from the environment. There is no config file and no command that sets one once a session is running, so two things decide what you type: the surface you are starting, and the shell you are typing in.
 
-**A single command** can carry it inline:
+**A single command** can carry the variable inline. **The interactive TUI is long-running**, so an inline prefix never reaches it; set the variable for the session first.
 
-```bash
-DEEPSEEK_API_KEY=sk-... k9999 --print "list the .ts files in src"
-```
+| Shell | For one command | For this session | Persistently |
+|---|---|---|---|
+| bash, zsh | `DEEPSEEK_API_KEY=sk-... k9999 --print "hello"` | `export DEEPSEEK_API_KEY=sk-...` | the export, in `~/.bashrc` |
+| PowerShell | `$env:DEEPSEEK_API_KEY="sk-..."; k9999 --print "hello"` | `$env:DEEPSEEK_API_KEY="sk-..."` | `[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY","sk-...","User")` |
+| cmd.exe | `set DEEPSEEK_API_KEY=sk-... && k9999 --print "hello"` | `set DEEPSEEK_API_KEY=sk-...` | `setx DEEPSEEK_API_KEY "sk-..."` |
 
-**The interactive TUI is long-running**, so an inline prefix never reaches it. Export the variable first, or put the line in your shell profile and set it once:
-
-```bash
-export DEEPSEEK_API_KEY=sk-...
-k9999          # or: kula
-```
+`export` is a shell builtin and exists only in bash, zsh, and their relatives — PowerShell and cmd reject it with `CommandNotFoundException` and `'export' is not recognized` respectively. The persistent forms apply to terminals opened afterwards, not the one you are in.
 
 Either way the session starts without a key, because the model is called only when you submit a prompt. The error therefore arrives a few seconds after the install looks like it worked:
 
@@ -63,6 +60,21 @@ error Provider is not configured: deepseek
 `--print` exits 1 on that error and writes nothing to stdout. `k9999 --show` never needs a key, which makes it the quickest way to check a configuration without a credential.
 
 **An installed copy does not read `.env`.** An agent that loads environment variables from whatever directory it runs in can be redirected by a repository it was asked to inspect, so the published package reads the environment and nothing else.
+
+## Platform
+
+**On Windows, run this under WSL.** The `bash` tool spawns `/bin/bash` unconditionally, so on native Windows it never reaches your command:
+
+```console
+$ node -e "require('child_process').spawn('/bin/bash',['-c','echo hi']).on('error',e=>console.log(e.code))"
+ENOENT
+```
+
+Measured on Windows 10 22H2 (build 19045) with Node 22.22.3: `process.platform` is `win32` and the spawn fails with `ENOENT` before anything runs. Git Bash does not help — its `/bin` is an MSYS mount that Node does not translate, so `/bin/bash` still resolves against the drive root.
+
+`read` and `edit` work, and the TUI renders, because the terminal library handles `win32`. But `bash` is the tool that runs builds, tests, and git, so an agent on native Windows can change files and never check its own work — which is the property this harness is built around. WSL is a real Linux, so everything works there.
+
+macOS and Linux need nothing special.
 
 ## Configure a model
 

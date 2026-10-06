@@ -92,21 +92,17 @@ That registry needs authentication **even for public packages**, so npmjs stays 
 
 ### Setting the API key
 
-An installed copy reads its credential from the environment. There is no config file and no command that sets one once a session is running, so the two surfaces differ in when you can supply it.
+An installed copy reads its credential from the environment. There is no config file and no command that sets one once a session is running, so two things decide what you type: the surface you are starting, and the shell you are typing in.
 
-**The interactive TUI is long-running**, so a variable prefixed to one command never reaches it. Export it first, or put the line in your shell profile and set it once:
+**The interactive TUI is long-running**, so a variable prefixed to one command never reaches it; set the variable for the session first. **A single command** can carry it inline, which keeps it out of every process that follows.
 
-```bash
-export DEEPSEEK_API_KEY=sk-...
-k9999 --tui
-kula --tui
-```
+| Shell | For one command | For this session | Persistently |
+|---|---|---|---|
+| bash, zsh | `DEEPSEEK_API_KEY=sk-... k9999 --print "hello"` | `export DEEPSEEK_API_KEY=sk-...` | the export, in `~/.bashrc` |
+| PowerShell | `$env:DEEPSEEK_API_KEY="sk-..."; k9999 --print "hello"` | `$env:DEEPSEEK_API_KEY="sk-..."` | `[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY","sk-...","User")` |
+| cmd.exe | `set DEEPSEEK_API_KEY=sk-... && k9999 --print "hello"` | `set DEEPSEEK_API_KEY=sk-...` | `setx DEEPSEEK_API_KEY "sk-..."` |
 
-**A single command** can carry it inline, which keeps it out of every process that follows:
-
-```bash
-DEEPSEEK_API_KEY=sk-... k9999 --print "what does this function do?"
-```
+`export` is a shell builtin and exists only in bash, zsh, and their relatives — PowerShell and cmd reject it with `CommandNotFoundException` and `'export' is not recognized` respectively. The persistent forms apply to terminals opened afterwards, not the one you are in.
 
 Both surfaces start without a key, because the model is called only when you submit a prompt. So a missing key arrives after you think the install worked:
 
@@ -127,6 +123,21 @@ npm --workspace k9999 publish       # prepublishOnly runs the full check first
 ```
 
 The tarball ships the two profiles inside it, because an installed copy runs in a directory that has none above it. [SPEC 0006](docs/specs/0006-publish-to-npm.md) records what that costs, why the build asserts rather than reports, and the 2FA and registry traps that cost two publish attempts.
+
+## Platform
+
+**On Windows, run this under WSL.** The `bash` tool spawns `/bin/bash` unconditionally, so on native Windows it never reaches your command:
+
+```console
+$ node -e "require('child_process').spawn('/bin/bash',['-c','echo hi']).on('error',e=>console.log(e.code))"
+ENOENT
+```
+
+Measured on Windows 10 22H2 (build 19045) with Node 22.22.3: `process.platform` is `win32` and the spawn fails with `ENOENT` before anything runs. Git Bash does not help — its `/bin` is an MSYS mount that Node does not translate, so `/bin/bash` still resolves against the drive root instead.
+
+`read` and `edit` work, and the TUI renders, because the terminal library handles `win32`. But `bash` is the tool that runs builds, tests, and git, so an agent on native Windows can change files and never check its own work — which is the property this harness is built around. WSL is a real Linux, so everything works there.
+
+macOS and Linux need nothing special.
 
 ## Layout
 
