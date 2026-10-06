@@ -397,6 +397,8 @@
 			<a href="#stance-4">测量</a>
 			<a href="#specs">Specs</a>
 			<a href="#status">现状</a>
+			<a href="#changelog">更新</a>
+			<a href="#support">合作</a>
 		</nav>
 	</div>
 </header>
@@ -423,7 +425,7 @@
 		</div>
 		<div class="hero-actions">
 			<span class="btn primary"><span class="tick">$</span> npm run check</span>
-			<span class="btn"><span class="tick">✓</span> 72 tests · 0 credentials</span>
+			<span class="btn"><span class="tick">✓</span> 135 tests · 0 credentials</span>
 			<span class="btn">7 specs · 2 shipped · 2 building</span>
 		</div>
 	</div>
@@ -941,7 +943,7 @@
 		<div class="gaps">
 			<div class="gap-row">
 				<span class="tag done">已交付 · 有测试</span>
-				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print / show / list / REPL）· <b>两个启动命令 k9999 与 kula</b> · <b>渲染词汇表与汇点、着色、diff、每轮消耗行</b> · 8 条输出规则写进两个 profile · <b>npm 包 k9999@0.1.0</b></p>
+				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print / show / list / REPL）· <b>两个启动命令 k9999 与 kula</b> · <b>渲染词汇表与汇点、着色、diff、每轮消耗行</b> · <b>转录 TUI：启动块与 ANSI Shadow 方块字、ctrl+o 展开帮助与已加载资源、两行 footer</b> · 8 条输出规则写进两个 profile · <b>npm 包 k9999</b></p>
 			</div>
 			<div class="gap-row">
 				<span class="tag done">进行中 · SPEC 0004</span>
@@ -993,7 +995,7 @@
 				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
 				<span class="path">bash</span>
 			</div>
-<pre><span class="c"># 已发布到 npm，不需要克隆仓库：k9999@0.1.0</span>
+<pre><span class="c"># 已发布到 npm，不需要克隆仓库：npx k9999</span>
 <span class="a">$</span> npx k9999 --show
   profile               code
   tools                 read, bash, edit
@@ -1020,13 +1022,13 @@
   <span class="r">Provider is not configured: deepseek</span>
   <span class="m">exit 1</span>
 
-<span class="c"># 从源码（维护者）：typecheck + 72 个测试 + 站点检查，不需要 API key</span>
+<span class="c"># 从源码（维护者）：typecheck + 135 个测试 + 站点检查，不需要 API key</span>
 <span class="a">$</span> npm install
 <span class="a">$</span> npm run check
-  <span class="g"># tests 72</span>
-  <span class="g"># pass 72</span>
+  <span class="g"># tests 135</span>
+  <span class="g"># pass 135</span>
   <span class="g"># fail 0</span>
-  <span class="g">3 file(s) under site load nothing external; 6 outbound hyperlink(s) allowed</span>
+  <span class="g">3 file(s) under site load nothing external; 9 outbound hyperlink(s) allowed</span>
 
 <span class="c"># 看渲染效果，不需要凭据（脚本化 provider）</span>
 <span class="a">$</span> npm run preview --workspace k9999
@@ -1045,10 +1047,44 @@
 
 <span class="c"># 构建发布产物：单包双 bin，profile 随包走</span>
 <span class="a">$</span> npm run build --workspace k9999
-  dist/index.js    26.7 KB
+  dist/index.js    70.0 KB
   profiles         code, data
 </pre>
 		</div>
+	</section>
+
+	<section id="changelog">
+		<div class="sec-head">
+			<p class="sec-num">12 / CHANGELOG</p>
+			<h2>每次发布改了什么</h2>
+			<p>这里只列最近三个版本，完整记录在 <a href="https://github.com/yageabu/k9999-agent-harness/blob/main/packages/cli/CHANGELOG.md">CHANGELOG.md</a>，和包一起发布。npm 上真正存在哪个版本，以 <code>npm view k9999 version</code> 为准，不以上面这一页为准。</p>
+		</div>
+		<ol class="rules">
+			<li><span><b>0.6.0 · TUI 向 Pi 看齐</b><span>顶部三行状态栏撤掉，换成启动块加两行 footer。启动块里是 ANSI Shadow 方块字写的 k9999 或 kula、一行快捷键提示、以及 <code>[Profile]</code> / <code>[Tools]</code> / <code>[Skills]</code> 三段已加载资源，<code>ctrl+o</code> 展开全部。终端太窄或太矮时自动退回单行名字。同时补上 <code>escape</code> 中断当前回合、<code>ctrl+c</code> 清空（连按两次退出）、<code>ctrl+d</code> 空提示时退出。提示文字和实际处理读同一份常量，所以帮助里不会出现没实现的键。</span></span></li>
+			<li><span><b>0.5.0 · 状态栏与启动 banner</b><span>模型、provider、思考等级一行，一条分隔线，下面一行实时数字。上下文读的是<strong>剩余</strong>额度；provider 不报 cache read 时缓存占比不显示，而不是显示 0，因为 0 会被读成“没有命中缓存”；成本花掉之后才出现。</span></span></li>
+			<li><span><b>0.4.1 · Ctrl+C 不再打堆栈</b><span>原来在提示符按 Ctrl+C 会打印 <code>fatal: AbortError</code> 加六行堆栈，因为中断以 rejected promise 的形式撞进了处理缺陷的分支。现在空闲时按直接退出，回合中按则停下回到提示符，两者都不算错误，退出码也不再非零。</span></span></li>
+		</ol>
+		<p class="table-note">
+			<a href="https://github.com/yageabu/k9999-agent-harness/releases">全部发布历史</a>
+		</p>
+	</section>
+
+	<section id="support">
+		<div class="sec-head">
+			<p class="sec-num">13 / SUPPORT</p>
+			<h2>这个项目最缺的是 token 额度</h2>
+			<p>测量工具已经建好，但还没有被规模验证过。它今天能报告的所有数字都来自脚本化 provider。</p>
+		</div>
+		<p>
+			一次真实运行要花钱，而这个项目没有预算。<code>probe</code> 模式和固定任务集上的前后对比因此都停在原地，这一页也不给它们任何数字。
+		</p>
+		<p>
+			<strong>如果你在模型厂商工作，能提供 API 额度，这是对项目最有用的支持。</strong>
+			任何支持 tool calling 的 provider 都有用。harness 与 provider 无关：<code>packages/core/src/model.ts</code> 里的 <code>providerFactory()</code> 是唯一的开关。
+		</p>
+		<p class="prov">
+			来信请说明模型、额度规模，以及你希望被测的是什么：<a href="mailto:yageabu@163.com">yageabu@163.com</a>
+		</p>
 	</section>
 
 </div>
@@ -1058,7 +1094,7 @@
 		<img class="logo" src="logo.svg" alt="" width="34" height="34">
 		<span class="mono">K9999 Agent Harness</span>
 		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 4 packages · 3 tools · 72 tests · 7 specs</span>
+		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 135 tests · 7 specs</span>
 		<span class="mono">never blocks · measures first</span>
 	</div>
 </footer>

@@ -20,7 +20,7 @@ Two launch commands, one implementation:
 Neither blocks on a human, and neither is judged by a model's opinion of its own output.
 ## Status
 
-Early. Two profiles, three tools, one CLI, eight tests. Every claim in this file is verified by `npm run check`.
+Early. Two profiles, three tools, one CLI, one interactive TUI. Every claim in this file is verified by `npm run check`.
 
 ## What it does
 
@@ -45,7 +45,7 @@ The `data` profile deliberately has no `edit`. A data agent writes scripts to fi
 
 ```bash
 npm install
-npm run check          # typecheck, 53 tests, and the site check. No API key needed
+npm run check          # typecheck, the test suite, and the site check. No API key needed
 npm run k9999 -- --list
 npm run eval -- --scripted --verify-replay   # the measurement harness, also unauthenticated
 ```
@@ -73,7 +73,7 @@ npm run k9999 -- --print "hello"
 
 ### Install it as a package
 
-Published as [`k9999@0.2.0`](https://www.npmjs.com/package/k9999):
+Published as [`k9999`](https://www.npmjs.com/package/k9999):
 
 ```bash
 npx k9999 --show        # no install, and no clone
@@ -92,7 +92,7 @@ To build and publish it yourself:
 
 ```bash
 npm run build --workspace k9999     # bundles to packages/cli/dist
-npm pack --workspace k9999          # k9999-0.1.0.tgz
+npm pack --workspace k9999          # k9999-<version>.tgz
 npm --workspace k9999 publish       # prepublishOnly runs the full check first
 ```
 
@@ -121,6 +121,15 @@ npm run preview --workspace k9999 -- never # plain, for piping
 ```
 
 It drives the real translate-and-sink pipeline with a scripted provider in a temporary directory, so the rendered output can be looked at — and changed — without an API key or a `git diff` afterwards.
+
+### The interactive TUI
+
+```bash
+npm run k9999 -- --tui    # the code agent
+npm run kula -- --tui     # the data agent, with its own block logo
+```
+
+It starts without credentials, because the model is called only when you submit a prompt. `ctrl+o` expands the key help and the loaded resources, `escape` stops a running turn, `ctrl+c` clears and twice leaves, and `ctrl+d` leaves on an empty prompt. The help names only keys that are handled, and a test asserts both directions.
 
 ### Logo
 
@@ -161,13 +170,21 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Status
 
-Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, the transcript TUI, and the npm package. `k9999@0.2.0` installs and runs from an empty directory. Seventy-two tests, no credentials required.
+Shipped: profiles, prompt assembly, the tool registry, skill resolution, provider registration, the CLI, the two launch commands, the rendering vocabulary with colour and diffs, and the transcript TUI with its startup block, `ctrl+o` help, and two-line footer. The published package installs and runs from an empty directory. The suite is 135 tests and needs no credentials. Which version is on npm is `npm view k9999 version`; this file does not restate it, because that claim drifted twice already.
 
 Published to npmjs as `k9999`. GitHub Packages carries the same build as `@yageabu/k9999`, because that registry requires the name to be scoped to the owning account; the workflow asks the built-in `GITHUB_TOKEN` for `packages: write` so no personal token is involved. Note that **GitHub Packages requires authentication even for public packages**, which is why npmjs remains the install path in the README.
 
 Building: [SPEC 0004](docs/specs/0004-measurement-and-budget.md), the measurement harness, and [SPEC 0007](docs/specs/0007-rendering-and-sinks.md), whose tier 3 is the full-screen dashboard.
 
 Accepted and unstarted: [SPEC 0001](docs/specs/0001-non-blocking-interaction.md), [0002](docs/specs/0002-reversibility-not-modes.md), [0003](docs/specs/0003-optional-decision-layer.md). The product page marks the three states separately and gives no figures for the third.
+
+## Support
+
+The measurement harness is built and unproven. Every figure it can report today comes from a scripted provider, because a real run costs money this project does not have. `probe` mode and the fixed task set are both waiting on that.
+
+**If you work at a model vendor and can give this project API quota, that is the most useful thing you can contribute.** Any provider with tool calling is useful. The harness stays provider agnostic by design, and `providerFactory()` in `packages/core/src/model.ts` is the only switch.
+
+Email **yageabu@163.com**. Say which model, how much quota, and what you want measured.
 
 ## License
 

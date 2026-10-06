@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.6.0
+
+### Changed
+
+- **The interactive TUI reads like Pi's now.** The three-line status header that
+  sat above the transcript is gone. Its figures moved to a two-line footer: the
+  working directory with its git branch, then context left, tokens up and down,
+  and cost on the left with the model and thinking level flush right. The prompt
+  and the totals belong on the same two rows, and the transcript gets three rows
+  back.
+- **A startup block replaces the old banner and header.** A block logo, one line
+  of key hints, `ctrl+o` for the full list, and the resources that loaded:
+
+  ```
+   ██╗  ██╗ █████╗  █████╗  █████╗  █████╗
+   ██║ ██╔╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
+   █████╔╝ ╚██████║╚██████║╚██████║╚██████║
+   ██╔═██╗  ╚═══██║ ╚═══██║ ╚═══██║ ╚═══██║
+   ██║  ██╗ █████╔╝ █████╔╝ █████╔╝ █████╔╝
+   ╚═╝  ╚═╝ ╚════╝  ╚════╝  ╚════╝  ╚════╝   v0.6.0
+   escape interrupt · ctrl+c/ctrl+d clear/exit · /exit quit · ctrl+o more
+   Press ctrl+o to show full startup help and loaded resources.
+
+   Ask k9999 about this directory. Its profile sets what it may read and change.
+
+  [Profile]
+    code · Code Agent
+
+  [Tools]
+    read, bash, edit
+  ```
+
+  The art is figlet's `ANSI Shadow`. It is used only when the terminal has room
+  for it: below the width of the art plus its version, or on a terminal too short
+  for the block, it falls back to the one-line name. `kula` gets its own art.
+
+### Added
+
+- **The keys the transcript was missing.** `escape` stops the running turn, and
+  no longer reports it as an error, because an interrupt is the user stopping
+  their own turn. `ctrl+c` clears the prompt and twice in a row leaves. `ctrl+d`
+  leaves when the prompt is empty. `ctrl+o` expands the startup help together
+  with the loaded resources. Each hint and its handler read the same constant,
+  because a hint that names a key is a claim about behavior.
+- **The git branch, in the footer.** Read from `.git/HEAD`, following the
+  `gitdir:` pointer a worktree writes, and refreshed after each turn. No
+  subprocess, because the footer redraws on every keystroke and every resize.
+
+### Notes
+
+- **The help prints only what exists.** Pi's compact line names `/ commands` and
+  `! bash`; this one names `/exit` and stops there, because this harness has no
+  slash-command menu and no shell passthrough. It omits Pi's `(auto)` compaction
+  marker and update notice for the same reason. Neither feature exists here.
+- A session started by path now introduces itself with the profile's own launch
+  name, so `kula` run through `npm run` shows `KULA` rather than `k9999`. A name
+  you typed still wins over the profile's.
+- `createHarness` now returns the resolved `skills` alongside the tools, so a
+  surface that reports what loaded does not resolve them a second time.
+
 ## 0.5.0
 
 ### Added
