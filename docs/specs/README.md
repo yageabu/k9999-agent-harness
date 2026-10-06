@@ -32,7 +32,7 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0004 | [Measurement and budget](0004-measurement-and-budget.md) | `building` | — | Done: task loading, predicates, transcripts, replay, budget, report. Left: `probe` mode, and figures from a real provider |
 | 0005 | [Two launch commands](0005-two-launch-commands.md) | `shipped` | — | Done: a second bin and a mapping table, both covered by tests |
 | 0006 | [Publish to npm](0006-publish-to-npm.md) | `shipped` | 0005 | Done: `k9999@0.1.0` is live and installs into an empty directory |
-| 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: vocabulary, sink seam, text sink with diffs, and the transcript TUI with Pi-shaped chrome. Left: tier 3, the full-screen dashboard |
+| 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: vocabulary, sink seam, text sink with diffs, and the transcript TUI with Pi-shaped chrome. Tier 3 is re-scoped to draw only the four rows that do not cross the wire — see ADR-0015 |
 
 ## Build order
 

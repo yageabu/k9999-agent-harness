@@ -2,7 +2,7 @@
 
 **Status:** `building`
 
-Tier 1 and the transcript TUI are implemented. Tier 3's dashboard is specified and not built.
+Tier 1 and the transcript TUI are implemented. Tier 3's dashboard is specified, re-scoped against an out-of-process observer, and not built.
 
 ## Problem
 
@@ -119,16 +119,16 @@ Direction, not a plan. The goal is stated here so that tiers 1 and 2 do not fore
 
 **A surface that shows what a session is doing, per turn.** Chosen shape: a **full-screen panel toggled by a key**, rather than a side panel or a status line. It is the only one of the three that can show all four of the concepts below at once, and the cost — one keystroke to see it — is the price of that.
 
-| Row | Source |
-|---|---|
-| session, cwd, model | the profile |
-| turns, wall time | agent events |
-| tokens up and down, cost | `usage` per assistant message |
-| tool calls, by name, success or failure | tool events |
-| skills declared and loaded | the profile |
-| components mounted, and which are degraded | 0003's provenance |
-| pending interactions and their deadlines | 0001 |
-| verification result | 0004's predicate |
+| Row | Source | On the wire? |
+|---|---|---|
+| session, cwd, model | the profile | model only |
+| turns, wall time | agent events | no — a turn is not a request |
+| tokens up and down, cost | `usage` per assistant message | **yes** |
+| tool calls, by name, success or failure | tool events | **yes** |
+| skills declared and loaded | the profile | their text only, inside the system prompt |
+| components mounted, and which are degraded | 0003's provenance | **no** |
+| pending interactions and their deadlines | 0001 | **no** |
+| verification result | 0004's predicate | **no** |
 
 The last four are the reason this is worth building rather than borrowing someone else's UI. No other harness has those concepts, so no other harness's interface can show them:
 
@@ -139,6 +139,39 @@ The last four are the reason this is worth building rather than borrowing someon
 
 Which rendering technology serves that stays undecided, and the tier 1 work has narrowed it. `@earendil-works/pi-tui` is verified usable: it takes its terminal by injection, which makes the whole surface testable through a headless implementation, and `Component` is `render(width) => string[]`, a pure function. Its limits are equally clear — it has no border component, its component constructors take positional arguments so a wrong call fails silently, and nothing is themed until a theme is injected.
 
+### The observer outside the process
+
+Before building any of that, one alternative was measured, and it moved the boundary.
+
+A reverse proxy in front of the model endpoint observes a session without the harness knowing it exists. [ccglass](https://github.com/jianshuo/ccglass) is the working example of the shape, and its design is the interesting part: these CLIs ignore `HTTP_PROXY`, so TLS interception is the obvious approach and the wrong one. ccglass instead **sets the client's base-URL variable**, so the client makes a plain HTTP hop to localhost and the proxy makes the HTTPS hop. No CA certificate, no certificate pinning, and nothing that breaks when the client updates, because the client's own TLS is never touched.
+
+It renders the full system prompt, every tool schema, the message history, token/cache/cost, a turn-to-turn diff, and the agent loop — for fifteen clients, with no change to any of them.
+
+**What it can and cannot fill is the whole point.** Reading the table above by its third column: **two rows of eight are on the wire, and four are not on it at all.** A proxy sees everything the model sees and nothing the harness knows. The concepts this spec exists for — an outstanding interaction, a degraded component, a verdict — never leave the process, because they are not sent anywhere. So the observer is not a substitute for tier 3. It is the part of tier 3 that costs nothing, and the rest is the part worth building.
+
+There is a second measurement in the same direction, and it is a defect rather than a choice.
+
+```js
+// node_modules/@earendil-works/pi-ai/dist/providers/deepseek.js:9
+baseUrl: "https://api.deepseek.com",
+```
+
+No pi-ai provider reads a base-URL variable; the only one that does is Azure OpenAI. `DEEPSEEK_BASE_URL` does nothing, so **K9999 is not observable by a proxy today**, and neither is any test that wants to stand between the harness and the network. An endpoint pinned in the provider is a harness that cannot be debugged from outside — a cost paid whether or not anyone ever runs a proxy.
+
+The fix is measured, and small. `baseUrl` is a plain field on `Provider`, so an override preserves the rest:
+
+```
+  before:          https://api.deepseek.com
+  after:           http://127.0.0.1:57633
+  getModels():     still a function, 2 models
+  models:          deepseek-flash, deepseek-v4-pro
+  auth:            present
+```
+
+**Decision.** Tier 3 draws only what the wire does not carry. The four rows with **no** in the third column are the surface; the other four are borrowed from an observer that is better at them, because it is not the thing being observed. This is not a reduction in ambition, it is the same claim the invariant at the top already makes — the agent describes what happened, and a surface decides how it looks — applied one level out, where the description is an HTTP request.
+
+**Consequence.** Tier 3 shrinks from eight rows to four, and the enabling change is a configurable endpoint, which is worth having on its own. Until it lands, the two rows marked **yes** are invisible to everything except the harness itself.
+
 ## Acceptance criteria
 
 1. A test asserts a recording sink receives one `toolResult` with a `change` whose `removed` and `added` are the exact lines the edit replaced. The data reaches the sink; the sink is not where the change is computed.
@@ -148,6 +181,8 @@ Which rendering technology serves that stays undecided, and the tier 1 work has 
 5. A test asserts a per-turn line is emitted once per turn with the token counts the events carried.
 6. A test asserts `end()` prints a summary whose totals equal the sum of the per-turn values.
 7. The agent layer imports nothing from `render/`. Checked by a test that reads the module graph, not by convention.
+8. A test asserts the model endpoint can be overridden, and that an override preserves the provider's model catalog and auth. The test asserts this without a network call, so it holds when the endpoint is unreachable.
+9. Tier 3 renders no row whose data crossed the wire. Checked by review against the third column of the table above, because a dashboard that redraws what a proxy already shows is the duplication this section exists to prevent.
 
 ## Out of scope
 
@@ -157,3 +192,4 @@ Which rendering technology serves that stays undecided, and the tier 1 work has 
 - **Themes.** One dark palette, matching `site/index.html`. A theme system before a second user exists is speculative.
 - **Mouse input, overlays, images in the terminal.** None are needed by any of the four concepts tier 3 exists to show.
 - **Moving the dashboard into the package.** It is an interface over a session, and it is served from `site/` or a separate app until there is a reason otherwise.
+- **A request inspector.** The system prompt, the tool schemas, the message history, and the turn-to-turn diff are what ccglass exists to show, and it shows them for fifteen harnesses. Rebuilding that in K9999 would be the harness observing itself, which is strictly worse at the one job — it cannot see the bytes on the wire, only the bytes it intended to send. The configurable endpoint is in scope so that the observer can attach; the observer is not.

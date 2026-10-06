@@ -280,3 +280,33 @@ The profile ids stay `code` and `data`. Renaming `profiles/code/` to `profiles/k
 **Revisit when** a third agent type exists. Two names are a mapping; three are a pattern, and a pattern deserves a different mechanism.
 
 **Rejected.** Two packages would duplicate argument parsing and event rendering for a shared implementation. Keeping a single command with `-p` would keep working and keep reading as one product with modes.
+
+---
+
+## 0015 — Borrow the observer, draw only what the wire does not carry
+
+**Status:** accepted
+
+**Context.** [SPEC 0007](specs/0007-rendering-and-sinks.md) specifies a tier 3 dashboard over eight rows: session/cwd/model, turns/wall time, tokens and cost, tool calls by name, skills declared and loaded, components mounted and degraded, pending interactions, and a verification verdict. The plan was to draw all eight.
+
+Measured against an out-of-process observer, that plan is redundant in half its rows. ccglass is the working example: a local reverse proxy that sets the client's base-URL variable, so the client makes a plain HTTP hop to localhost and the proxy makes the HTTPS hop — no CA certificate and no certificate pinning, because the client's TLS is never touched. It renders the full system prompt, every tool schema, the message history, tokens, cache, cost, a turn-to-turn diff, and the agent loop, for fifteen clients, with no change to any of them.
+
+**Two of the eight rows are on the wire. Four are not on it at all.** A proxy sees everything the model sees and nothing the harness knows: an outstanding interaction, a degraded component, and a verdict are never sent anywhere, so nothing outside the process can render them. Skills sit between the two — their text lands in the system prompt, but which ones loaded is a harness fact.
+
+A second measurement is a defect rather than a trade-off. `pi-ai`'s deepseek provider pins its endpoint:
+
+```js
+baseUrl: "https://api.deepseek.com",
+```
+
+No pi-ai provider reads a base-URL variable except Azure OpenAI. So `DEEPSEEK_BASE_URL` does nothing and **K9999 is not observable by any proxy today**, nor is it testable with a stand-in endpoint that is not the network.
+
+**Decision.** Tier 3 draws only what the wire does not carry — the four rows a proxy cannot fill. The model-facing rows are borrowed rather than rebuilt. In exchange, the model endpoint becomes configurable, because an observer cannot attach to a harness that pins its own endpoint.
+
+**Consequences.** Tier 3 shrinks from eight rows to four, and the enabling change is small: `baseUrl` is a plain field on `Provider`, so an override preserves the catalog and auth. A test asserts that preservation without a network call, so it holds when the endpoint is unreachable.
+
+The borrowing is not free of direction: it makes an external tool part of how this project is debugged, and that tool is one maintainer's side project, last pushed three months before this record. That is acceptable for a debugging aid and not acceptable for a dependency, which is why nothing imports it.
+
+**Revisit when** an observer needs harness state to be useful, rather than only model state. That is the point at which the exchange stops being favourable, and the answer is a channel — which [SPEC 0001](specs/0001-non-blocking-interaction.md) already specifies — not a larger proxy.
+
+**Rejected.** Building the request inspector in K9999. It is the harness observing itself, which is strictly worse at the one job that matters: it can see the bytes it intended to send, not the bytes that went out. **Doing nothing.** Leaving the endpoint pinned costs more than the dashboard: a harness that cannot be pointed at a stand-in endpoint cannot be integration-tested without the network.
