@@ -33,6 +33,7 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0005 | [Two launch commands](0005-two-launch-commands.md) | `shipped` | — | Done: a second bin and a mapping table, both covered by tests |
 | 0006 | [Publish to npm](0006-publish-to-npm.md) | `shipped` | 0005 | Done: `k9999@0.1.0` is live and installs into an empty directory |
 | 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: vocabulary, sink seam, text sink with diffs, and the transcript TUI with Pi-shaped chrome. Tier 3 is re-scoped to draw only the four rows that do not cross the wire — see ADR-0015 |
+| 0008 | [A shell that exists](0008-shell-portability.md) | `accepted` | — | Resolve the shell at startup from the host, and refuse the session with exit 2 when there is none |
 
 ## Build order
 
@@ -53,8 +54,12 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
  │
  ├──▶ 0006  publish to npm     ── shipped: k9999@0.1.0
  │
- └──▶ 0007  tier 1             ── building: the vocabulary and the text sink
+ ├──▶ 0007  tier 1             ── building: the vocabulary and the text sink
+ │
+ └──▶ 0008  shell resolution   ── accepted: the harness finds a shell, or refuses to start
 ```
+
+0008 is independent of everything above it and is the only spec here about the host rather than the agent. It is small, it is the difference between a Windows session that works and one that fails quietly, and it is not waiting on anything.
 
 0001, 0003, and 0005 are independent of each other. 0002 depends on 0001 because a reversibility gate is an interaction, and an interaction that blocks is the thing 0001 removes. 0006 depends on 0005, because a package manifest lists the bins the package provides.
 

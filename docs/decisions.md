@@ -310,3 +310,32 @@ The borrowing is not free of direction: it makes an external tool part of how th
 **Revisit when** an observer needs harness state to be useful, rather than only model state. That is the point at which the exchange stops being favourable, and the answer is a channel — which [SPEC 0001](specs/0001-non-blocking-interaction.md) already specifies — not a larger proxy.
 
 **Rejected.** Building the request inspector in K9999. It is the harness observing itself, which is strictly worse at the one job that matters: it can see the bytes it intended to send, not the bytes that went out. **Doing nothing.** Leaving the endpoint pinned costs more than the dashboard: a harness that cannot be pointed at a stand-in endpoint cannot be integration-tested without the network.
+
+---
+
+## 0016 — Resolve a shell, rather than add a second one
+
+**Status:** accepted
+
+**Context.** The `bash` tool spawns `/bin/bash` by name. On native Windows that is `ENOENT`, measured on Windows 10 22H2 with Node 22.22.3, and the failure is quiet: the tool reports the spawn error to the model and returns, so a session starts, reads, edits, and never runs anything. The obvious repair is a PowerShell tool that takes over on Windows.
+
+The measurement that settles it is that a Windows machine usually already has a bash. On the machine this was measured on, `%ProgramFiles%\Git\bin\bash.exe` does not exist and `where bash.exe` returns `C:\Windows\System32\bash.exe` — the legacy WSL entry point. Running a command through it works:
+
+```console
+C:\Windows\System32\bash.exe -s < command-file
+HELLO_FROM_WSL_Linux
+```
+
+So the defect is not a missing shell. It is a harness that named one instead of looking for one. A Windows machine with a bash was available the whole time, and the source could not see it.
+
+**Decision.** One `bash` tool, whose shell is resolved at startup from what the host actually has. No PowerShell tool.
+
+**Consequences.** The tool's name stays true: POSIX commands go to a POSIX shell, so every skill, profile prompt, and eval task keeps meaning what it says. `where bash.exe` returning an unusable launcher rather than a shell is a real case, so the resolution recognizes that one path and passes the command on stdin instead of `-c`; the detail is in [SPEC 0008](specs/0008-shell-portability.md) with the branch table.
+
+No shell found is a `ConfigurationError` — the message, exit 2, no stack trace — which is the split `errors.ts` already makes for a configuration the harness cannot work with, and this is the first case that is about the host rather than the invocation. It is raised while the session is assembled, so an unusable host is refused before a turn, not discovered during one.
+
+This is [ADR-0015](#0015--borrow-the-observer-draw-only-what-the-wire-does-not-carry)'s principle a second time: an absolute path the harness does not control — a model endpoint there, a shell here — is a harness that works only on the machine it was written on. Both become configuration. Recording it twice is not repetition; it is the same lesson arriving from two directions, and the second instance is why the first was worth writing down.
+
+**Revisit when** a host shell exists that is not POSIX and is worth speaking to. That is a different decision, and it starts from a task the harness cannot express rather than a platform it cannot start on.
+
+**Rejected.** **A PowerShell tool.** It solves a problem the measurement says is not there, and it costs more than it buys: the model would choose a dialect per command with no signal to choose on, the tool's name and description would stop being true, and every skill and profile prompt written in `ls`, `grep`, and `&&` would become wrong on the platform it was added for. It would also add a tool to a profile rather than replace one, leaving two ways to run a command where the model cannot tell which is live. **Refusing to support Windows.** Defensible and cheap, and it would let a user install a package that starts and then edits without verifying. **Doing nothing.** The spawn error is already handled, so the harness never crashes — it just fails quietly, which is the worst of the three.
