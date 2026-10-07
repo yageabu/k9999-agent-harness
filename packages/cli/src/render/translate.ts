@@ -122,9 +122,48 @@ export interface TranslatorDeps {
 	readonly contextTokens?: () => number;
 }
 
+/**
+ * What the render layer listens to, in K9999's own words.
+ *
+ * This is the seam that made the harness change survivable. The translator used
+ * to read `pi-agent-core`'s event objects directly, which meant every surface
+ * built on it inherited that library's shape — and when the harness underneath
+ * moved to `pi-durable` (ADR-0017) the events kept their names and changed their
+ * payloads. Two adapters below turn either vocabulary into this one, and nothing
+ * past this point can tell which harness is running.
+ */
+export type SourceEvent =
+	| { readonly type: "text"; readonly text: string }
+	| { readonly type: "thinking"; readonly text: string }
+	| { readonly type: "messageEnd"; readonly message: AssistantMessageShape }
+	| { readonly type: "toolStart"; readonly id: string; readonly name: string; readonly args: unknown }
+	| {
+			readonly type: "toolEnd";
+			readonly id: string;
+			readonly name: string;
+			readonly ok: boolean;
+			readonly result: unknown;
+	  }
+	| { readonly type: "turnEnd" };
+
+/** The parts of an assistant message this layer reads, and nothing else. */
+export interface AssistantMessageShape {
+	readonly role?: string;
+	readonly stopReason?: string;
+	readonly errorMessage?: string;
+	readonly usage?: {
+		readonly input: number;
+		readonly output: number;
+		readonly cacheRead: number;
+		readonly cacheWrite: number;
+		readonly reasoning?: number;
+		readonly cost: { readonly total: number };
+	};
+}
+
 export interface Translator {
 	readonly state: RunState;
-	translate(event: AgentEvent): RenderItem[];
+	translate(event: SourceEvent): RenderItem[];
 }
 
 /**
@@ -142,23 +181,27 @@ export function createTranslator(initial: RunState, deps: TranslatorDeps = {}): 
 			return state;
 		},
 
-		translate(event: AgentEvent): RenderItem[] {
+		translate(event: SourceEvent): RenderItem[] {
 			const items: RenderItem[] = [];
 
 			switch (event.type) {
-				case "message_update": {
-					const update = event.assistantMessageEvent;
-					if (update.type === "text_delta") {
-						items.push({ kind: "text", text: update.delta });
-					} else if (update.type === "thinking_delta") {
-						items.push({ kind: "thinking", text: update.delta });
+				case "text": {
+					if (event.text !== "") {
+						items.push({ kind: "text", text: event.text });
 					}
 					break;
 				}
 
-				case "message_end": {
+				case "thinking": {
+					if (event.text !== "") {
+						items.push({ kind: "thinking", text: event.text });
+					}
+					break;
+				}
+
+				case "messageEnd": {
 					const message = event.message;
-					if (message.role !== "assistant") {
+					if (message.role !== undefined && message.role !== "assistant") {
 						break;
 					}
 					// A provider or stream failure arrives as an assistant message with
@@ -186,31 +229,31 @@ export function createTranslator(initial: RunState, deps: TranslatorDeps = {}): 
 					break;
 				}
 
-				case "tool_execution_start": {
+				case "toolStart": {
 					items.push({
 						kind: "toolCall",
-						id: event.toolCallId,
-						name: event.toolName,
-						summary: summarizeCall(event.toolName, event.args),
+						id: event.id,
+						name: event.name,
+						summary: summarizeCall(event.name, event.args),
 					});
 					break;
 				}
 
-				case "tool_execution_end": {
+				case "toolEnd": {
 					state = { ...state, toolCalls: state.toolCalls + 1 };
 					const change = changeOf(event.result);
 					items.push({
 						kind: "toolResult",
-						id: event.toolCallId,
-						name: event.toolName,
-						ok: !event.isError,
-						summary: summarizeResult(event.toolName, event.result, event.isError, state.cwd),
+						id: event.id,
+						name: event.name,
+						ok: event.ok,
+						summary: summarizeResult(event.name, event.result, !event.ok, state.cwd),
 						...(change === undefined ? {} : { change }),
 					});
 					break;
 				}
 
-				case "turn_end": {
+				case "turnEnd": {
 					state = {
 						...state,
 						turns: state.turns + 1,
@@ -219,9 +262,6 @@ export function createTranslator(initial: RunState, deps: TranslatorDeps = {}): 
 					items.push({ kind: "turn", state });
 					break;
 				}
-
-				default:
-					break;
 			}
 
 			return items;

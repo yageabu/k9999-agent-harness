@@ -10,6 +10,7 @@ import {
 	resolveProfilesDir,
 } from "@k9999/core";
 import { createTextSink, createTranslator, initialRunState, type RenderSink } from "./render/index.ts";
+import { fromAgentCore } from "./render/sources.ts";
 import { createTuiApp, type SessionFacts } from "./tui/index.ts";
 import { contextTokens } from "./context.ts";
 import { check, configuredRegistry, currentVersion, PI_FLAGS, render as renderUpdate } from "./update.ts";
@@ -218,7 +219,11 @@ function watch(harness: Harness, sink: RenderSink, cwd: string): { failure?: str
 	const status: { failure?: string } = {};
 
 	harness.agent.subscribe((event) => {
-		for (const item of translator.translate(event)) {
+		// The harness's events are translated into K9999's own vocabulary at the edge.
+		// Nothing past `fromAgentCore` can tell which harness is running, which is what
+		// makes the move to pi-durable a change of one adapter rather than of the
+		// renderer (ADR-0017).
+		for (const item of fromAgentCore(event).flatMap((source) => translator.translate(source))) {
 			if (item.kind === "error") {
 				status.failure ??= item.message;
 			}

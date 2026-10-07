@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { AgentEvent } from "@earendil-works/pi-agent-core";
+import type { SourceEvent } from "../src/render/index.ts";
 import {
 	compactNumber,
 	createTextSink,
@@ -46,16 +46,12 @@ function makeTranslator() {
 	return createTranslator(initialRunState(TRANSCRIPT.model, TRANSCRIPT.cwd));
 }
 
-function textEvent(delta: string): AgentEvent {
-	return {
-		type: "message_update",
-		message: { role: "assistant" },
-		assistantMessageEvent: { type: "text_delta", delta },
-	} as unknown as AgentEvent;
+function textEvent(delta: string): SourceEvent {
+	return { type: "text", text: delta };
 }
 
-function toolEnd(name: string, result: unknown, isError = false): AgentEvent {
-	return { type: "tool_execution_end", toolCallId: "c1", toolName: name, result, isError } as unknown as AgentEvent;
+function toolEnd(name: string, result: unknown, isError = false): SourceEvent {
+	return { type: "toolEnd", id: "c1", name, ok: !isError, result };
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +107,7 @@ test("a malformed change is ignored rather than thrown", () => {
 test("usage accumulates into the run state, and turns are counted", () => {
 	const translator = makeTranslator();
 	translator.translate({
-		type: "message_end",
+		type: "messageEnd",
 		message: {
 			role: "assistant",
 			stopReason: "stop",
@@ -124,9 +120,9 @@ test("usage accumulates into the run state, and turns are counted", () => {
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.001 },
 			},
 		},
-	} as unknown as AgentEvent);
+	});
 
-	const items = translator.translate({ type: "turn_end" } as unknown as AgentEvent);
+	const items = translator.translate({ type: "turnEnd" });
 	const turn = items.find((item) => item.kind === "turn");
 	assert.ok(turn?.kind === "turn");
 	assert.equal(turn.state.turns, 1);
@@ -138,9 +134,9 @@ test("usage accumulates into the run state, and turns are counted", () => {
 test("a provider failure becomes an error item rather than silence", () => {
 	const translator = makeTranslator();
 	const items = translator.translate({
-		type: "message_end",
+		type: "messageEnd",
 		message: { role: "assistant", stopReason: "error", errorMessage: "Provider is not configured: deepseek" },
-	} as unknown as AgentEvent);
+	});
 
 	assert.deepEqual(items, [{ kind: "error", message: "Provider is not configured: deepseek" }]);
 });
@@ -148,9 +144,9 @@ test("a provider failure becomes an error item rather than silence", () => {
 test("an aborted turn is reported even with no message from the provider", () => {
 	const translator = makeTranslator();
 	const items = translator.translate({
-		type: "message_end",
+		type: "messageEnd",
 		message: { role: "assistant", stopReason: "aborted" },
-	} as unknown as AgentEvent);
+	});
 	assert.equal(items.length, 1);
 	assert.match((items[0] as { message: string }).message, /aborted/);
 });
