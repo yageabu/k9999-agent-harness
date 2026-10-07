@@ -1,38 +1,27 @@
-import { spawn } from "node:child_process";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { Context } from "@earendil-works/chord";
+import { defineTool, type ToolExecutionApi, type ToolExecutionResult } from "@earendil-works/pi-durable";
 import { type Static, Type } from "typebox";
 import { NO_REDACTOR, type Redactor } from "../redact.ts";
-import { DEFAULT_TOOL_ENV, toolEnvironment } from "./env.ts";
+import { requireEnv } from "./read.ts";
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 const MAX_OUTPUT_CHARS = 50 * 1024;
-/** Hard ceiling on what we keep in memory, so a runaway command cannot exhaust the process. */
-const ACCUMULATE_LIMIT = 4 * MAX_OUTPUT_CHARS;
 
 const bashSchema = Type.Object({
-	command: Type.String({ description: "Shell command, executed as `bash -c <command>` in the working directory." }),
+	command: Type.String({ description: "Shell command to execute in the working directory." }),
 	timeout: Type.Optional(Type.Number({ description: `Timeout in seconds. Default ${DEFAULT_TIMEOUT_SECONDS}.` })),
 });
 
 export type BashToolInput = Static<typeof bashSchema>;
 
-export interface BashToolDetails {
+export type BashToolDetails = {
 	command: string;
 	exitCode: number | null;
-	wallTimeSeconds: number;
+	timeoutSeconds: number;
 	truncated: boolean;
 	timedOut: boolean;
-	timeoutSeconds: number;
 	/** Labels of credentials removed from this result. Non-empty means the turn is degraded. */
-	redacted: readonly string[];
-}
-
-export interface BashToolOptions {
-	/** The parent environment to draw from. Defaults to `process.env`, injected so tests need no host. */
-	source?: Record<string, string | undefined>;
-	/** Names the subprocess may read. Defaults to the allowlist in `./env.ts`. */
-	env?: readonly string[];
-	redactor?: Redactor;
+	redacted: string[];
 }
 
 function cap(text: string): { text: string; truncated: boolean } {
@@ -42,94 +31,61 @@ function cap(text: string): { text: string; truncated: boolean } {
 	return { text: `${text.slice(0, MAX_OUTPUT_CHARS)}\n[truncated: output exceeds 50KB]`, truncated: true };
 }
 
-/** `bash` — run a shell command and return combined stdout/stderr and the exit code. */
-export function createBashTool(cwd: string, options: BashToolOptions = {}): AgentTool<typeof bashSchema, BashToolDetails> {
+export interface BashToolOptions {
+	/** Removes credentials from the result before the model sees it (SPEC 0011, link 1). */
+	redactor?: Redactor;
+}
+
+/**
+ * `bash` — run a shell command and return its output and exit code.
+ *
+ * The command runs through the execution environment rather than a spawn this
+ * file owns, which is what lets `guardedEnv` decide what the child may read.
+ * Building the environment here would put the allowlist in a tool, and a tool
+ * that forgets is the case the wrapper exists to make safe.
+ */
+export function createBashTool(options: BashToolOptions = {}) {
 	const redactor = options.redactor ?? NO_REDACTOR;
-	// Built once: the allowlist is a decision, and rebuilding it per call would
-	// invite someone to make it dynamic from a value the model can reach.
-	const childEnv = toolEnvironment(options.source ?? process.env, options.env ?? DEFAULT_TOOL_ENV);
-	return {
+	return defineTool({
 		name: "bash",
-		label: "Bash",
-		description:
-			"Run a shell command and return its combined output and exit code. Output is limited to 50KB. Use this for builds, tests, git, and anything else you would run in a terminal.",
+		description: `Run a shell command and return its combined output and exit code. Output is limited to 50KB. Use this for builds, tests, git, and anything else you would run in a terminal.`,
 		parameters: bashSchema,
 		executionMode: "sequential",
-		execute: async (_toolCallId, params, signal) => {
+		execute: async (params: BashToolInput, api, context: Context): Promise<ToolExecutionResult<BashToolDetails>> => {
+			const env = requireEnv(api as ToolExecutionApi<never>);
 			const timeoutSeconds = params.timeout ?? DEFAULT_TIMEOUT_SECONDS;
 			const started = Date.now();
 
-			const run = await new Promise<{ output: string; exitCode: number | null; timedOut: boolean }>((resolve) => {
-				const child = spawn("/bin/bash", ["-c", params.command], {
-					cwd,
-					// Without this the child inherits the whole process environment, which is
-					// how the provider credential became a tool result. See `./env.ts`.
-					env: childEnv,
-					stdio: ["ignore", "pipe", "pipe"],
-				});
-
-				let output = "";
-				let dropped = 0;
-				const append = (chunk: Buffer | string): void => {
-					const text = chunk.toString();
-					if (output.length >= ACCUMULATE_LIMIT) {
-						dropped += text.length;
-						return;
-					}
-					output += text;
-				};
-
-				const stdout = child.stdout;
-				const stderr = child.stderr;
-				stdout?.on("data", append);
-				stderr?.on("data", append);
-
-				let timedOut = false;
-				const timer = setTimeout(() => {
-					timedOut = true;
-					append(`\n[timeout after ${timeoutSeconds}s]`);
-					child.kill("SIGKILL");
-				}, timeoutSeconds * 1000);
-
-				const onAbort = (): void => {
-					child.kill("SIGKILL");
-				};
-				signal?.addEventListener("abort", onAbort, { once: true });
-
-				let settled = false;
-				const finish = (exitCode: number | null): void => {
-					if (settled) {
-						return;
-					}
-					settled = true;
-					clearTimeout(timer);
-					signal?.removeEventListener("abort", onAbort);
-					if (dropped > 0) {
-						output += `\n[${dropped} further characters discarded]`;
-					}
-					resolve({ output, exitCode, timedOut });
-				};
-
-				child.on("error", (error: Error) => {
-					append(`\n[spawn error: ${error.message}]`);
-					finish(null);
-				});
-				child.on("close", (code: number | null) => {
-					finish(code);
-				});
-			});
+			let output = "";
+			const result = await env.exec(
+				params.command,
+				{
+					...(Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? { timeout: timeoutSeconds } : {}),
+					onOutput: (text: string) => {
+						// Collected whole and redacted once, below. Redacting per chunk
+						// would miss a credential split across two of them.
+						output += text;
+					},
+				},
+				context,
+			);
 
 			const wallTimeSeconds = (Date.now() - started) / 1000;
-			// Redact before truncating. A cap applied first can cut a credential in half,
-			// and half a credential does not match the value the redactor holds.
-			const redacted = redactor.redact(run.output);
+			const timedOut = result.ok ? result.value.exitCode === 124 : false;
+			const exitCode = result.ok ? result.value.exitCode : null;
+			if (!result.ok) {
+				output += `\n[spawn error: ${result.error.code}]`;
+			}
+
+			// Redact before truncating: a cap applied first can cut a credential in
+			// half, and half a credential does not match the value being looked for.
+			const redacted = redactor.redact(output);
 			const { text, truncated } = cap(redacted.text);
-			const header = `exit code: ${run.exitCode ?? "unknown"} | ${wallTimeSeconds.toFixed(1)}s${
-				run.timedOut ? " | timed out" : ""
+			const header = `exit code: ${exitCode ?? "unknown"} | ${wallTimeSeconds.toFixed(1)}s${
+				timedOut ? " | timed out" : ""
 			}`;
 			// A silent edit to a result the model is reasoning about is worse than the
-			// credential it removed: the model cannot tell that it is reading a
-			// different world. So the removal is stated where it happened.
+			// credential it removed: the model cannot tell it is reading a different world.
 			const notice =
 				redacted.hits.length > 0
 					? `\n[redacted ${redacted.hits.join(", ")}: this result was edited before you saw it]`
@@ -137,16 +93,18 @@ export function createBashTool(cwd: string, options: BashToolOptions = {}): Agen
 
 			return {
 				content: [{ type: "text", text: `${header}${notice}\n${text}` }],
+				isError: exitCode !== 0,
 				details: {
 					command: redactor.redact(params.command).text,
-					exitCode: run.exitCode,
-					wallTimeSeconds,
-					truncated,
-					timedOut: run.timedOut,
+					exitCode,
 					timeoutSeconds,
-					redacted: redacted.hits,
+					truncated,
+					timedOut,
+					redacted: [...redacted.hits],
 				},
 			};
 		},
-	};
+	});
 }
+
+export type BashTool = ReturnType<typeof createBashTool>;

@@ -1,27 +1,23 @@
 import { randomBytes } from "node:crypto";
-import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createModels } from "@earendil-works/pi-ai/models";
-import { deepseekProvider } from "@earendil-works/pi-ai/providers/deepseek";
-import { createRegistry, Harness } from "@earendil-works/pi-durable";
+import { loadSession } from "@k9999/core";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
-import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
-import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { createWebServer } from "./server.ts";
 import { createWireRecorder } from "./wire.ts";
 
 /**
  * Start the browser surface.
  *
- * This is the smallest thing that satisfies SPEC 0009 with real state: a
- * pi-durable Harness on a file, the coding tools, and the server. K9999's own
- * profiles and prompt assembly are not wired in yet — the harness underneath
- * moved, and the layer above it is the next piece of work.
+ * This runs on K9999's own profile rather than on pi-durable's built-in coding
+ * tools, which is what makes the request pane show a prompt at all: a profile's
+ * `system.md` is a `PromptSection`, and before this the pane said the prompt
+ * arrived as sections it could not see.
  */
 
 interface Options {
 	storage: string;
 	cwd: string;
-	model: string;
+	model?: string;
+	profile: string;
 	writes: boolean;
 	port: number;
 }
@@ -30,7 +26,7 @@ function parse(argv: readonly string[]): Options {
 	const options: Options = {
 		storage: ".k9999/session.sqlite",
 		cwd: process.cwd(),
-		model: process.env.K9999_MODEL ?? "deepseek/deepseek-flash",
+		profile: "code",
 		writes: false,
 		port: 0,
 	};
@@ -38,7 +34,10 @@ function parse(argv: readonly string[]): Options {
 		const arg = argv[i];
 		if (arg === "--storage") options.storage = argv[++i] ?? options.storage;
 		else if (arg === "--cwd") options.cwd = argv[++i] ?? options.cwd;
-		else if (arg === "--model") options.model = argv[++i] ?? options.model;
+		else if (arg === "--model") {
+			const value = argv[++i];
+			if (value !== undefined) options.model = value;
+		} else if (arg === "--profile") options.profile = argv[++i] ?? options.profile;
 		else if (arg === "--writes") options.writes = true;
 		else if (arg === "--port") options.port = Number(argv[++i] ?? "0");
 		else if (arg === "-h" || arg === "--help") {
@@ -46,9 +45,10 @@ function parse(argv: readonly string[]): Options {
 				[
 					"k9999-web — a browser surface for K9999",
 					"",
+					"  --profile <id>     the profile to run (default code)",
 					"  --storage <path>   SQLite file for the session (default .k9999/session.sqlite)",
 					"  --cwd <path>       the directory the agent works in (default: current)",
-					"  --model <ref>      provider/modelId (default: deepseek/deepseek-flash)",
+					"  --model <ref>      provider/modelId, overriding the profile",
 					"  --writes           serve prompts and abort as well as reads. Off by default",
 					"  --port <n>         0 picks a free port (default 0)",
 					"",
@@ -64,19 +64,6 @@ function parse(argv: readonly string[]): Options {
 
 async function main(): Promise<void> {
 	const options = parse(process.argv.slice(2));
-	const context = BACKGROUND_CONTEXT;
-
-	const slash = options.model.indexOf("/");
-	if (slash <= 0) {
-		process.stderr.write(`Model must be "provider/modelId", got ${JSON.stringify(options.model)}\n`);
-		process.exit(2);
-	}
-	const providerId = options.model.slice(0, slash);
-	const modelId = options.model.slice(slash + 1);
-	if (providerId !== "deepseek") {
-		process.stderr.write(`Unknown provider "${providerId}". Only deepseek is wired today.\n`);
-		process.exit(2);
-	}
 	if (!process.env.DEEPSEEK_API_KEY) {
 		process.stderr.write(
 			"DEEPSEEK_API_KEY is not set.\n\n  export DEEPSEEK_API_KEY=sk-...   (bash, zsh)\n  $env:DEEPSEEK_API_KEY=\"sk-...\"  (PowerShell)\n  set DEEPSEEK_API_KEY=sk-...      (cmd)\n\nThen start again.\n",
@@ -84,41 +71,26 @@ async function main(): Promise<void> {
 		process.exit(2);
 	}
 
-	const models = createModels();
-	models.setProvider(deepseekProvider());
-
-	const registry = createRegistry();
-	registry.install(CodingTools);
-	// The request inspector (SPEC 0009). In process, so it needs no proxy: the
-	// generation hooks hand over what ccglass would have to intercept. It is
-	// memory, not a document — a request inspector is a live debugging view, and
-	// committing every request body would put large blobs in the session store.
+	// The request inspector is an extension like any other, installed beside the
+	// profile's. It is not durable — see `wire.ts`.
 	const wire = createWireRecorder();
-	registry.install(wire.extension);
-
-	const storage = await openNodeSqliteStorage(options.storage);
-	const harness = await Harness.open(
-		storage,
-		{
-			models,
-			registry,
-			// A fresh environment per call, built from the conversation's cwd, so one
-			// function would serve a directory per conversation or a container per
-			// conversation without changing anything else.
-			env: ({ cwd }) => new NodeExecutionEnv({ cwd: cwd ?? options.cwd }),
-		},
-		context,
-	);
-	const conversation = await harness.root(context, {
-		agent: { model: { provider: providerId, modelId }, cwd: options.cwd },
+	const session = await loadSession({
+		profile: options.profile,
+		cwd: options.cwd,
+		storage: await openNodeSqliteStorage(options.storage),
+		...(options.model === undefined ? {} : { model: options.model }),
+		extensions: [wire.extension],
 	});
-	// Continue any run a previous process left unfinished.
-	harness.resume();
+
+	// The recorder cannot see a profile prompt through the request messages, because
+	// pi-durable delivers one positionally. Binding the conversation lets it render
+	// the sections instead, and say which route it took.
+	wire.bind(session.conversation);
 
 	const token = randomBytes(24).toString("base64url");
 	const server = await createWebServer({
-		harness,
-		conversation,
+		harness: session.harness,
+		conversation: session.conversation,
 		token,
 		allowWrites: options.writes,
 		port: options.port,
@@ -126,8 +98,15 @@ async function main(): Promise<void> {
 	});
 
 	process.stdout.write(`\n  K9999 web\n\n    ${server.url}\n\n`);
-	process.stdout.write(`    ${options.writes ? "reads and writes" : "read-only"} · ${options.model} · ${options.cwd}\n`);
-	process.stdout.write(`    storage ${options.storage}\n\n`);
+	process.stdout.write(`    ${options.writes ? "reads and writes" : "read-only"} · ${session.profile.id} · ${session.modelRef}\n`);
+	process.stdout.write(`    cwd ${options.cwd}\n    storage ${options.storage}\n`);
+	if (session.redacting.length > 0) {
+		process.stdout.write(`    redacting ${session.redacting.join(", ")}\n`);
+	}
+	if (session.envMissing.length > 0) {
+		process.stdout.write(`    declared but absent from this host: ${session.envMissing.join(", ")}\n`);
+	}
+	process.stdout.write("\n");
 	if (!options.writes) {
 		process.stdout.write("    Read-only. Add --writes to send prompts from the page.\n\n");
 	}
@@ -135,7 +114,7 @@ async function main(): Promise<void> {
 
 	const shutdown = async (): Promise<void> => {
 		await server.close();
-		await harness.close(context);
+		await session.close();
 		process.exit(0);
 	};
 	process.on("SIGINT", () => void shutdown());

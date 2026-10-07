@@ -252,13 +252,14 @@ function renderWire() {
   prompt.className = "req";
   const ph = document.createElement("div");
   ph.className = "kind";
-  ph.textContent = "system prompt";
+  ph.textContent = "system prompt" + (wire.systemSource === "sections" ? " · rendered from sections" : wire.systemSource === "message" ? " · as a message" : "");
   prompt.appendChild(ph);
   const body = document.createElement("div");
   body.className = "dim";
   body.textContent = wire.hasSystem && wire.system
-    ? wire.system.slice(0, 4000)
-    : "None as a message. pi-durable delivers a positional prompt as sections, which this hook cannot see.";
+    ? wire.system.slice(0, 8000)
+    : "None. This profile declares no prompt and no extension contributed a section.";
+  body.style.whiteSpace = "pre-wrap";
   prompt.appendChild(body);
   host.appendChild(prompt);
 }

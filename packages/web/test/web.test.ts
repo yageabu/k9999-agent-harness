@@ -175,9 +175,9 @@ describe("the browser surface", () => {
 		assert.doesNotMatch(PAGE, /committed total[^"]*this request/);
 	});
 
-	it("states the boundary of the request pane rather than implying it sees the wire", () => {
+	it("states the boundary of the request pane rather than implying it sees the wire", async () => {
 		assert.match(PAGE, /wire-boundary/);
-		const boundary = createWireRecorder().snapshot().boundary;
+		const boundary = (await createWireRecorder().snapshot()).boundary;
 		assert.match(boundary, /Not the bytes on the wire/);
 		assert.match(boundary, /not durable/);
 	});

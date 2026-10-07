@@ -1,7 +1,8 @@
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { Context } from "@earendil-works/chord";
+import { defineTool } from "@earendil-works/pi-durable";
+import type { ToolExecutionApi, ToolExecutionResult } from "@earendil-works/pi-durable";
 import { type Static, Type } from "typebox";
+import { requireEnv } from "./read.ts";
 
 const editSchema = Type.Object({
 	path: Type.String({ description: "File to edit, relative to the working directory or absolute." }),
@@ -19,17 +20,17 @@ export type EditToolInput = Static<typeof editSchema>;
  * becomes a diff, one summary line, or a row in a table; it never has to
  * reconstruct what happened from byte counts.
  */
-export interface FileChange {
+export type FileChange = {
 	path: string;
 	/** 1-indexed line where the replacement starts. */
 	line: number;
 	/** Lines the replacement removed. */
-	removed: readonly string[];
+	removed: string[];
 	/** Lines it added. */
-	added: readonly string[];
-}
+	added: string[];
+};
 
-export interface EditToolDetails {
+export type EditToolDetails = {
 	path: string;
 	replaced: number;
 	bytesBefore: number;
@@ -59,69 +60,68 @@ function splitLines(text: string): string[] {
 	return lines;
 }
 
-/**
- * `edit` — exact string replacement.
- *
- * Throws rather than guessing when the match is absent or ambiguous. A tool
- * that silently picks the first of several matches is worse than a failed call.
- */
-export function createEditTool(cwd: string): AgentTool<typeof editSchema, EditToolDetails> {
-	return {
-		name: "edit",
-		label: "Edit",
-		description:
-			"Replace an exact string in a file. oldText must occur exactly once, otherwise the edit fails and you must supply more context.",
-		parameters: editSchema,
-		execute: async (_toolCallId, params, signal) => {
-			const target = path.isAbsolute(params.path) ? params.path : path.resolve(cwd, params.path);
+export const editTool = defineTool({
+	name: "edit",
+	description:
+		"Replace an exact string in a file. oldText must occur exactly once, otherwise the edit fails and you must supply more context.",
+	parameters: editSchema,
+	execute: async (params: EditToolInput, api, context: Context): Promise<ToolExecutionResult<EditToolDetails>> => {
+		const env = requireEnv(api as ToolExecutionApi<never>);
+		const absolute = await env.absolutePath(params.path, context);
+		if (!absolute.ok) {
+			throw new Error(`edit ${params.path}: ${absolute.error.code}`);
+		}
+		const target = absolute.value;
 
-			const options: { encoding: "utf8"; signal?: AbortSignal } = { encoding: "utf8" };
-			if (signal) {
-				options.signal = signal;
-			}
-			const before = await readFile(target, options);
+		const read = await env.readTextFile(target, context);
+		if (!read.ok) {
+			throw new Error(`edit ${target}: ${read.error.code}`);
+		}
+		const before = read.value;
 
-			if (params.oldText === "") {
-				throw new Error(`edit ${target}: oldText must not be empty`);
-			}
-			const matches = countOccurrences(before, params.oldText);
-			if (matches === 0) {
-				throw new Error(`edit ${target}: oldText not found. Read the file and copy the text exactly.`);
-			}
-			if (matches > 1) {
-				throw new Error(
-					`edit ${target}: oldText matches ${matches} times. Include surrounding lines so the match is unique.`,
-				);
-			}
+		if (params.oldText === "") {
+			throw new Error(`edit ${target}: oldText must not be empty`);
+		}
+		const matches = countOccurrences(before, params.oldText);
+		if (matches === 0) {
+			throw new Error(`edit ${target}: oldText not found. Read the file and copy the text exactly.`);
+		}
+		if (matches > 1) {
+			throw new Error(
+				`edit ${target}: oldText matches ${matches} times. Include surrounding lines so the match is unique.`,
+			);
+		}
 
-			const at = before.indexOf(params.oldText);
-			const after = before.replace(params.oldText, params.newText);
-			await writeFile(target, after, { encoding: "utf8" });
+		const at = before.indexOf(params.oldText);
+		const after = before.replace(params.oldText, params.newText);
+		const written = await env.writeFile(target, after, context);
+		if (!written.ok) {
+			throw new Error(`edit ${target}: ${written.error.code}`);
+		}
 
-			const removed = splitLines(params.oldText);
-			const added = splitLines(params.newText);
-			const change: FileChange = {
+		const removed = splitLines(params.oldText);
+		const added = splitLines(params.newText);
+		const change: FileChange = {
+			path: target,
+			// Count the newlines before the match; the replacement starts on the next line.
+			line: before.slice(0, at).split("\n").length,
+			removed,
+			added,
+		};
+
+		return {
+			// Line counts rather than byte counts: the caller is a model, and "+3 -1"
+			// says more about what happened than "412 -> 455 bytes".
+			content: [{ type: "text", text: `edited ${target} (+${added.length} -${removed.length})` }],
+			details: {
 				path: target,
-				// Count the newlines before the match; the replacement starts on the next line.
-				line: before.slice(0, at).split("\n").length,
-				removed,
-				added,
-			};
+				replaced: 1,
+				bytesBefore: before.length,
+				bytesAfter: after.length,
+				change,
+			},
+		};
+	},
+});
 
-			return {
-				// Line counts rather than byte counts: the caller is a model, and "+3 -1"
-				// says more about what happened than "412 -> 455 bytes".
-				content: [
-					{ type: "text", text: `edited ${target} (+${added.length} -${removed.length})` },
-				],
-				details: {
-					path: target,
-					replaced: 1,
-					bytesBefore: before.length,
-					bytesAfter: after.length,
-					change,
-				},
-			};
-		},
-	};
-}
+export type EditTool = typeof editTool;

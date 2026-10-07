@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
-import { defineExtension, GenerationTask, hook, type Extension } from "@earendil-works/pi-durable";
+import {
+	defineExtension,
+	GenerationTask,
+	hook,
+	type Conversation,
+	type Extension,
+} from "@earendil-works/pi-durable";
 
 /**
  * The request inspector, in process (SPEC 0009, tier C).
@@ -56,6 +63,8 @@ export interface WireState {
 	readonly system: string;
 	/** Whether a system prompt was seen at all. A profile may deliver one as sections. */
 	readonly hasSystem: boolean;
+	/** Where `system` came from, because the two sources are not the same thing. */
+	readonly systemSource: "message" | "sections" | "none";
 	/** Tool schemas of the newest request, in full. */
 	readonly tools: readonly WireTool[];
 	/** Newest last. */
@@ -99,7 +108,19 @@ function toolsFrom(messages: readonly Message[]): WireTool[] {
 
 export interface WireRecorder {
 	readonly extension: Extension;
-	snapshot(): WireState;
+	/**
+	 * Attach the conversation the sections are rendered from.
+	 *
+	 * A profile's `system.md` is a `PromptSection`, and `pi-durable` delivers it
+	 * positionally: the system *message* going to the provider has empty content
+	 * and the text is assembled from the sections at request time. So the hook
+	 * cannot see it, and the pane would say "no prompt" about a request carrying a
+	 * kilo-token one. Measured before this: 238 input tokens without a profile
+	 * prompt, 1186 with a 2590-character one — the prompt was plainly being sent
+	 * while the pane showed nothing.
+	 */
+	bind(conversation: Conversation): void;
+	snapshot(): Promise<WireState>;
 }
 
 export function createWireRecorder(options: { limit?: number } = {}): WireRecorder {
@@ -107,6 +128,7 @@ export function createWireRecorder(options: { limit?: number } = {}): WireRecord
 	const requests: WireRequest[] = [];
 	let system = "";
 	let hasSystem = false;
+	let bound: Conversation | undefined;
 	let tools: WireTool[] = [];
 	let pending: { at: string; attempt: number; systemDigest: string; toolsDigest: string; messages: readonly { role: string; bytes: number }[] } | undefined;
 	let attempt = 0;
@@ -180,10 +202,40 @@ export function createWireRecorder(options: { limit?: number } = {}): WireRecord
 
 	return {
 		extension,
-		snapshot(): WireState {
+		bind(conversation: Conversation): void {
+			bound = conversation;
+		},
+		async snapshot(): Promise<WireState> {
+			// Prefer the message when there is one, because that is what actually went.
+			// Fall back to rendering the sections, which is the same text by a different
+			// route, and label which it was.
+			let systemSource: WireState["systemSource"] = hasSystem ? "message" : "none";
+			let rendered = system;
+			if (!hasSystem && bound !== undefined && !rendered) {
+				try {
+					const agent = await bound.agent(BACKGROUND_CONTEXT);
+					const parts: string[] = [];
+					for (const section of agent.sections ?? []) {
+						const text = await section.render(
+							{ conversationId: bound.id, agent, env: undefined, shown: {} } as never,
+							BACKGROUND_CONTEXT,
+						);
+						if (typeof text === "string" && text !== "") {
+							parts.push(section.tag === false ? text : `<${section.key}>\n${text}\n</${section.key}>`);
+						}
+					}
+					if (parts.length > 0) {
+						rendered = parts.join("\n\n");
+						systemSource = "sections";
+					}
+				} catch {
+					// A snapshot must never be the reason a page fails to render.
+				}
+			}
 			return {
-				system,
-				hasSystem,
+				system: rendered,
+				hasSystem: systemSource !== "none",
+				systemSource,
 				tools,
 				requests: [...requests],
 				boundary:

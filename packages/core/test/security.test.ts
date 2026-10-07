@@ -8,7 +8,7 @@ import { deepseekProvider } from "@earendil-works/pi-ai/providers/deepseek";
 import { createHarness } from "../src/harness.ts";
 import { resolveCredentials } from "../src/model.ts";
 import { createRedactor, NO_REDACTOR } from "../src/redact.ts";
-import { createBashTool } from "../src/tools/bash.ts";
+import { createTools } from "../src/tools/index.ts";
 import { DEFAULT_TOOL_ENV, missingFromEnvironment, toolEnvironment } from "../src/tools/env.ts";
 import { guardedEnv } from "../src/tools/guarded-env.ts";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
@@ -27,9 +27,22 @@ import type { Profile } from "../src/profile.ts";
 
 const DEMO_SECRET = "sk-demo-DO-NOT-USE-1234567890";
 
-async function run(command: string, options: Parameters<typeof createBashTool>[1] = {}): Promise<string> {
-	const tool = createBashTool(process.cwd(), options);
-	const result = await tool.execute("call-1", { command }, undefined);
+/**
+ * Run a command the way the harness does: through `createTools`, which builds the
+ * guarded environment and the API a tool receives. Testing the tool alone would
+ * skip the environment, which is where the allowlist lives.
+ */
+async function run(
+	command: string,
+	options: { source?: Record<string, string | undefined>; allow?: readonly string[]; redactor?: Redactor } = {},
+): Promise<string> {
+	const bash = createTools(["bash"], process.cwd(), {
+		...(options.source === undefined ? {} : { source: options.source }),
+		...(options.allow === undefined ? {} : { env: options.allow }),
+		...(options.redactor === undefined ? {} : { redactor: options.redactor }),
+	}).find((tool) => tool.name === "bash");
+	if (bash === undefined) throw new Error("no bash tool");
+	const result = await bash.execute("call-1", { command });
 	const first = result.content[0];
 	return first && first.type === "text" ? first.text : "";
 }
@@ -43,7 +56,6 @@ describe("the tool subprocess environment", () => {
 		const bytes = Number(text.split("\n")[1]?.trim());
 		assert.equal(bytes, 0, "the child must not see the provider credential");
 	});
-
 	it("cannot read a variable added to the host after the allowlist was written", () => {
 		// This is what makes it an allowlist. A denylist would grant this.
 		const env = toolEnvironment({ PATH: "/usr/bin", SOMETHING_NEW_LAST_TUESDAY: "value" });
@@ -96,17 +108,21 @@ describe("redaction of tool output", () => {
 	});
 
 	it("reports the hit in the tool details, so a turn can be marked degraded", async () => {
-		const redactor = createRedactor([{ value: DEMO_SECRET, label: "the provider key" }]);
-		const tool = createBashTool(process.cwd(), { redactor });
-		const result = await tool.execute("call-1", { command: `echo ${DEMO_SECRET}` }, undefined);
+		const bash = createTools(["bash"], process.cwd(), {
+			redactor: createRedactor([{ value: DEMO_SECRET, label: "the provider key" }]),
+		}).find((tool) => tool.name === "bash");
+		assert.ok(bash);
+		const result = await bash.execute("call-1", { command: `echo ${DEMO_SECRET}` });
 		const details = result.details as { redacted?: readonly string[] };
 		assert.deepEqual(details.redacted, ["the provider key"]);
 	});
 
 	it("redacts the command it was asked to run, because that is stored too", async () => {
-		const redactor = createRedactor([{ value: DEMO_SECRET, label: "the provider key" }]);
-		const tool = createBashTool(process.cwd(), { redactor });
-		const result = await tool.execute("call-1", { command: `echo ${DEMO_SECRET}` }, undefined);
+		const bash = createTools(["bash"], process.cwd(), {
+			redactor: createRedactor([{ value: DEMO_SECRET, label: "the provider key" }]),
+		}).find((tool) => tool.name === "bash");
+		assert.ok(bash);
+		const result = await bash.execute("call-1", { command: `echo ${DEMO_SECRET}` });
 		const details = result.details as { command?: string };
 		assert.ok(!String(details.command).includes(DEMO_SECRET));
 	});

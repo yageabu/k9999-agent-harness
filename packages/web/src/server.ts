@@ -98,7 +98,7 @@ export async function createWebServer(options: WebServerOptions): Promise<WebSer
 	const state = async (): Promise<string> => {
 		const view = await conversation.viewState(BACKGROUND_CONTEXT);
 		try {
-			return JSON.stringify({ view: view.value, wire: wire?.snapshot() });
+			return JSON.stringify({ view: view.value, wire: wire === undefined ? undefined : await wire.snapshot() });
 		} finally {
 			view.dispose();
 		}
@@ -161,7 +161,7 @@ export async function createWebServer(options: WebServerOptions): Promise<WebSer
 			// format to the browser, which is a second implementation of the thing that has
 			// one, and SPEC 0009 rules that out.
 			watch.start(async (value) => {
-				frame({ view: value, wire: wire?.snapshot() });
+				frame({ view: value, wire: wire === undefined ? undefined : await wire.snapshot() });
 			});
 
 			request.on("close", () => {

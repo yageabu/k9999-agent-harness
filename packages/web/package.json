@@ -1,18 +1,19 @@
 {
-	"name": "@k9999/web",
-	"version": "0.0.0",
-	"private": true,
-	"type": "module",
-	"description": "A browser surface for K9999, carried by pi-durable's conversation view",
-	"exports": {
-		".": "./src/index.ts"
-	},
-	"scripts": {
-		"start": "node --experimental-strip-types src/cli.ts"
-	},
-	"dependencies": {
-		"@earendil-works/chord": "^1.0.4",
-		"@earendil-works/pi-ai": "^1.0.4",
-		"@earendil-works/pi-durable": "^1.0.4"
-	}
+  "name": "@k9999/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A browser surface for K9999, carried by pi-durable's conversation view",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/cli.ts"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "^1.0.4",
+    "@earendil-works/pi-ai": "^1.0.4",
+    "@earendil-works/pi-durable": "^1.0.4",
+    "@k9999/core": "*"
+  }
 }
