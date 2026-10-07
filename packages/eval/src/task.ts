@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { toolEnvironment } from "@k9999/core";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { Budget } from "./metrics.ts";
 
@@ -266,7 +267,16 @@ export interface CheckResult {
 
 function run(command: string, cwd: string): Promise<{ code: number | null; output: string }> {
 	return new Promise((resolve) => {
-		const child = spawn("/bin/bash", ["-c", command], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+		// A verdict command inherits the same allowlist the agent's tools do. It is the
+		// same leak in the same shape: this spawn also had no `env`, so a task whose
+		// predicate printed the environment put a credential into the transcript the
+		// report is built from. The output is not sent to a model, so this is the
+		// smaller half of the problem, but the smaller half of a leak is still a leak.
+		const child = spawn("/bin/bash", ["-c", command], {
+			cwd,
+			env: toolEnvironment(process.env),
+			stdio: ["ignore", "pipe", "pipe"],
+		});
 		let output = "";
 		child.stdout?.on("data", (chunk: Buffer) => {
 			output += chunk.toString();

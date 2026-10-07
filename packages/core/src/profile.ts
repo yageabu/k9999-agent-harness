@@ -20,6 +20,17 @@ export interface ProfileConfig {
 	tools: string[];
 	/** Skill directory names under `<repo>/skills`. */
 	skills?: string[];
+	/**
+	 * Environment variable names tool subprocesses may read, replacing the default
+	 * allowlist rather than adding to it.
+	 *
+	 * Replacing matters. An "extras" field would accumulate — every profile would
+	 * gain a line and nobody would remove one — and the file that decides what a
+	 * subprocess can read should be readable in one screen. A profile that needs
+	 * `SSH_AUTH_SOCK` for `git push` writes the whole list, and that is the point:
+	 * granting it is a line a person reviewed.
+	 */
+	env?: string[];
 }
 
 /** A loaded profile: its declaration plus the authored system prompt. */
@@ -86,6 +97,14 @@ function parseProfileConfig(raw: unknown, file: string): ProfileConfig {
 			throw new ProfileError(`${file}: "skills" must be an array of strings`);
 		}
 		config.skills = skills as string[];
+	}
+
+	const env = raw["env"];
+	if (env !== undefined) {
+		if (!Array.isArray(env) || env.some((entry) => typeof entry !== "string" || entry === "")) {
+			throw new ProfileError(`${file}: "env" must be an array of non-empty strings`);
+		}
+		config.env = env as string[];
 	}
 
 	void id;

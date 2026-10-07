@@ -5,6 +5,9 @@ import type { Profile } from "./profile.ts";
 import { buildSystemPrompt, type SkillSummary } from "./prompt.ts";
 import { resolveSkills, resolveSkillsDir } from "./skills.ts";
 import { type AnyTool, createTools } from "./tools/index.ts";
+import { DEFAULT_TOOL_ENV, missingFromEnvironment } from "./tools/env.ts";
+import { createRedactor, type Redactor, type Secret } from "./redact.ts";
+import { providerFor, resolveCredentials } from "./model.ts";
 
 /** Used when neither the caller, the environment, nor the profile names a model. */
 export const DEFAULT_MODEL = "deepseek/deepseek-flash";
@@ -33,6 +36,19 @@ export interface HarnessOptions {
 	skillsFallbacks?: readonly string[];
 	/** Subscriber for every agent event. */
 	onEvent?: (event: AgentEvent) => void;
+	/**
+	 * Credentials to remove from tool output. When omitted, they are asked of the
+	 * provider named by `modelRef`, so a caller does not have to know which
+	 * variable a provider reads. Pass `[]` to redact nothing, which is what a test
+	 * with a scripted provider wants.
+	 */
+	secrets?: readonly Secret[];
+	/** Names a tool subprocess may read. Defaults to the allowlist in `tools/env.ts`. */
+	toolEnv?: readonly string[];
+	/** The parent environment the subprocess allowlist draws from. Defaults to `process.env`. */
+	environment?: Record<string, string | undefined>;
+	/** A redactor to use instead of building one from `secrets`. */
+	redactor?: Redactor;
 }
 
 export interface Harness {
@@ -43,6 +59,17 @@ export interface Harness {
 	modelRef: string;
 	systemPrompt: string;
 	tools: AnyTool[];
+	/**
+	 * The credentials tool output is scanned for, by label. Empty means nothing
+	 * is redacted, which is a state worth being able to report rather than a
+	 * detail to leave implicit.
+	 */
+	redacting: readonly string[];
+	/**
+	 * Declared environment names the host does not have, so a profile that asked
+	 * for something absent is visible instead of looking configured.
+	 */
+	envMissing: readonly string[];
 	/**
 	 * The skills the prompt advertises, resolved from disk.
 	 *
@@ -66,7 +93,16 @@ export async function createHarness(options: HarnessOptions): Promise<Harness> {
 	const modelRef = options.model ?? process.env[MODEL_ENV] ?? profile.config.model ?? DEFAULT_MODEL;
 	const { models, model } = options.resolvedModel ?? resolveModel(modelRef);
 
-	const tools = createTools(profile.config.tools, cwd);
+	// What the tools may read, and what is scanned for on the way out. Both are
+	// resolved once: the allowlist is a decision and the credential list is a
+	// fact about this process, and neither should be re-derived per call where a
+	// value the model can reach might influence it.
+	const source = options.environment ?? process.env;
+	const allow = options.toolEnv ?? profile.config.env ?? DEFAULT_TOOL_ENV;
+	const secrets = options.secrets ?? (await resolveCredentials(providerFor(modelRef)));
+	const redactor = options.redactor ?? createRedactor(secrets);
+
+	const tools = createTools(profile.config.tools, cwd, { env: allow, source, redactor });
 
 	let skills = options.skills ?? [];
 	if (options.skills === undefined) {
@@ -97,5 +133,15 @@ export async function createHarness(options: HarnessOptions): Promise<Harness> {
 		agent.subscribe(options.onEvent);
 	}
 
-	return { agent, profile, model, modelRef, systemPrompt, tools, skills };
+	return {
+		agent,
+		profile,
+		model,
+		modelRef,
+		systemPrompt,
+		tools,
+		skills,
+		redacting: secrets.map((secret) => secret.label),
+		envMissing: missingFromEnvironment(source, allow),
+	};
 }

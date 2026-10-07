@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "typebox";
+import { NO_REDACTOR, type Redactor } from "../redact.ts";
+import { DEFAULT_TOOL_ENV, toolEnvironment } from "./env.ts";
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 const MAX_OUTPUT_CHARS = 50 * 1024;
@@ -21,6 +23,16 @@ export interface BashToolDetails {
 	truncated: boolean;
 	timedOut: boolean;
 	timeoutSeconds: number;
+	/** Labels of credentials removed from this result. Non-empty means the turn is degraded. */
+	redacted: readonly string[];
+}
+
+export interface BashToolOptions {
+	/** The parent environment to draw from. Defaults to `process.env`, injected so tests need no host. */
+	source?: Record<string, string | undefined>;
+	/** Names the subprocess may read. Defaults to the allowlist in `./env.ts`. */
+	env?: readonly string[];
+	redactor?: Redactor;
 }
 
 function cap(text: string): { text: string; truncated: boolean } {
@@ -31,7 +43,11 @@ function cap(text: string): { text: string; truncated: boolean } {
 }
 
 /** `bash` — run a shell command and return combined stdout/stderr and the exit code. */
-export function createBashTool(cwd: string): AgentTool<typeof bashSchema, BashToolDetails> {
+export function createBashTool(cwd: string, options: BashToolOptions = {}): AgentTool<typeof bashSchema, BashToolDetails> {
+	const redactor = options.redactor ?? NO_REDACTOR;
+	// Built once: the allowlist is a decision, and rebuilding it per call would
+	// invite someone to make it dynamic from a value the model can reach.
+	const childEnv = toolEnvironment(options.source ?? process.env, options.env ?? DEFAULT_TOOL_ENV);
 	return {
 		name: "bash",
 		label: "Bash",
@@ -46,6 +62,9 @@ export function createBashTool(cwd: string): AgentTool<typeof bashSchema, BashTo
 			const run = await new Promise<{ output: string; exitCode: number | null; timedOut: boolean }>((resolve) => {
 				const child = spawn("/bin/bash", ["-c", params.command], {
 					cwd,
+					// Without this the child inherits the whole process environment, which is
+					// how the provider credential became a tool result. See `./env.ts`.
+					env: childEnv,
 					stdio: ["ignore", "pipe", "pipe"],
 				});
 
@@ -101,20 +120,31 @@ export function createBashTool(cwd: string): AgentTool<typeof bashSchema, BashTo
 			});
 
 			const wallTimeSeconds = (Date.now() - started) / 1000;
-			const { text, truncated } = cap(run.output);
+			// Redact before truncating. A cap applied first can cut a credential in half,
+			// and half a credential does not match the value the redactor holds.
+			const redacted = redactor.redact(run.output);
+			const { text, truncated } = cap(redacted.text);
 			const header = `exit code: ${run.exitCode ?? "unknown"} | ${wallTimeSeconds.toFixed(1)}s${
 				run.timedOut ? " | timed out" : ""
 			}`;
+			// A silent edit to a result the model is reasoning about is worse than the
+			// credential it removed: the model cannot tell that it is reading a
+			// different world. So the removal is stated where it happened.
+			const notice =
+				redacted.hits.length > 0
+					? `\n[redacted ${redacted.hits.join(", ")}: this result was edited before you saw it]`
+					: "";
 
 			return {
-				content: [{ type: "text", text: `${header}\n${text}` }],
+				content: [{ type: "text", text: `${header}${notice}\n${text}` }],
 				details: {
-					command: params.command,
+					command: redactor.redact(params.command).text,
 					exitCode: run.exitCode,
 					wallTimeSeconds,
 					truncated,
 					timedOut: run.timedOut,
 					timeoutSeconds,
+					redacted: redacted.hits,
 				},
 			};
 		},

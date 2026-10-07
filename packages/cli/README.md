@@ -122,6 +122,42 @@ Put it in `./profiles/mine/` and run `k9999 --profile mine`. A `profiles/` direc
 }
 ```
 
+### What a tool subprocess may read
+
+`bash` runs commands in a child process, and that child gets a constructed
+environment rather than yours. The default list is small — `PATH`, `HOME`,
+locale, `TERM`, `USER`, `TMPDIR` — and **the provider credential is not in it**,
+which is the point: before this, `printenv DEEPSEEK_API_KEY` in a tool call
+returned the key, the result became part of the transcript, and the transcript
+was sent to the provider on every later turn.
+
+A profile that needs more declares the **whole list**, replacing the default
+rather than adding to it:
+
+```json
+{
+	"name": "My Agent",
+	"tools": ["read", "bash", "edit"],
+	"env": ["PATH", "HOME", "LANG", "TERM", "SSH_AUTH_SOCK"]
+}
+```
+
+Replacing matters. An `envExtra` field would accumulate a line per profile and
+nobody would remove one; the file that decides what a subprocess can read should
+be readable in one screen. `SSH_AUTH_SOCK` is the usual reason — `git push` over
+SSH needs it — and it is also a live socket to your keys, so granting it is a
+line someone wrote on purpose.
+
+A name in the list that your host does not have is reported rather than silently
+granting nothing, so a profile that asked for something absent is visible.
+
+As a second line of defense, tool output is scanned for the values of the
+credentials this process holds and matches are replaced with
+`[redacted: NAME]` — with the removal stated in the output, because an edit the
+model cannot see is worse than the credential it removed. The values come from
+asking the provider to resolve its own credential, so this does not carry a list
+of variable names that would drift when a provider changes one.
+
 The available tools are `read`, `bash`, and `edit`. An unknown name is a load-time error listing the valid ones, rather than a run with fewer tools than you asked for.
 
 ## Environment

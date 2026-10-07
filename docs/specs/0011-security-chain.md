@@ -1,6 +1,18 @@
 # 0011 — The security chain
 
-**Status:** `accepted`
+**Status:** `building`
+
+**Link 1 is implemented.** `toolEnvironment` builds a subprocess environment from
+an allowlist, `resolveCredentials` asks the provider for the value it should scan
+for rather than hardcoding a variable name, and tool output is redacted before it
+is truncated. Measured on this repository, before and after:
+
+```console
+$ printenv DEEPSEEK_API_KEY | wc -c    # 36 before, 0 after
+$ env | wc -l                          # 49 before, 10 after
+```
+
+Links 2, 3, and 4 are not built.
 
 ## Problem
 
