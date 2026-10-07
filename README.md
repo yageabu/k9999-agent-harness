@@ -202,8 +202,8 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Documentation
 
-- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: eight specs, two shipped and two building.
-- [`docs/decisions.md`](docs/decisions.md) — sixteen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
+- [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: nine specs, two shipped and two building.
+- [`docs/decisions.md`](docs/decisions.md) — seventeen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
 - [`site/index.html`](site/index.html) — the product page, live at <https://yageabu.github.io/k9999-agent-harness>. No external requests, no JavaScript. Published to GitHub Pages by [`.github/workflows/pages.yml`](.github/workflows/pages.yml); the workflow fails if any page or drawing under `site/` references an external resource. Open it directly, or export a PDF with `npm run pdf`.
 - [`site/logo.svg`](site/logo.svg) and [`site/mark.svg`](site/mark.svg) — the logo, in two sizes of one design

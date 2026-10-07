@@ -34,6 +34,7 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0006 | [Publish to npm](0006-publish-to-npm.md) | `shipped` | 0005 | Done: `k9999@0.1.0` is live and installs into an empty directory |
 | 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: vocabulary, sink seam, text sink with diffs, and the transcript TUI with Pi-shaped chrome. Tier 3 is re-scoped to draw only the four rows that do not cross the wire — see ADR-0015 |
 | 0008 | [A shell that exists](0008-shell-portability.md) | `accepted` | — | Resolve the shell at startup from the host, and refuse the session with exit 2 when there is none |
+| 0009 | [A browser surface](0009-web-interface.md) | `accepted` | 0007, pi-durable | A server that carries `watch()` to a browser and submits back. Tier A is read-only; Tier B adds writes behind a token |
 
 ## Build order
 
@@ -56,8 +57,12 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
  │
  ├──▶ 0007  tier 1             ── building: the vocabulary and the text sink
  │
- └──▶ 0008  shell resolution   ── accepted: the harness finds a shell, or refuses to start
+ ├──▶ 0008  shell resolution   ── accepted: the harness finds a shell, or refuses to start
+ │
+ └──▶ 0009  browser surface    ── accepted: tier A reads, tier B writes
 ```
+
+0009 is the first spec whose substrate is adopted rather than written: `pi-durable` supplies the view, the operations between views, submissions, and resume, and the spec is the server and the page that carry them. It depends on 0007 for the vocabulary a surface speaks and on `pi-durable` for the state a surface reads.
 
 0008 is independent of everything above it and is the only spec here about the host rather than the agent. It is small, it is the difference between a Windows session that works and one that fails quietly, and it is not waiting on anything.
 

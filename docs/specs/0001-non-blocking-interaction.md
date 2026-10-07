@@ -92,6 +92,25 @@ inbox with distinct `steer`/`followUp`/`nextRun` semantics.
 > version number. `packages/cli/src/context.ts` carries the smaller version of
 > it: a context-token helper written locally because 1.0.2 publishes none.
 
+> **Second correction, and it resolves the question.** The paragraph above
+> checked one package and one name, and concluded that the capability was
+> unpublished. It is published. **`@earendil-works/pi-durable`** — "a durable
+> agent harness. Conversations, model turns, tool calls, and your own state are
+> committed to storage before anything is shown. If the process dies mid-turn,
+> reopening the storage picks the work up where it stopped" — ships every
+> primitive this spec needs, under `harness/`:
+>
+> - `harness/inbox` — `steer` / `followUp` / `write` modes, placed at
+>   `postTools` or `final` boundaries, with withdrawal settling `aborted`
+> - typed immutable entries with `head: "self"` resets and compaction
+> - a `Storage` seam with memory, JSONL, and SQLite backends, and
+>   `prepareCommit` carrying a sequence number
+> - idempotent submissions by `requestId`, and `resume()`
+>
+> The name `AgentHarness` was never the thing to look for. The capability was,
+> and it was one package over. [ADR-0017](../decisions.md) records the decision
+> to adopt it and its cost.
+
 The substrate has to come from somewhere, and there are three answers:
 
 | Option | Cost |
@@ -100,8 +119,9 @@ The substrate has to come from somewhere, and there are three answers:
 | **Depend on a version that has it.** Nothing published does. `0.74`–`0.80` are on npm; whether any carries `harness/` is unchecked and would be a step backwards in the model layer | A version pin against the rest of the project, for an unverified asset |
 | **Narrow the spec.** Suspension survives process death only if the durable layer exists. Without it, the honest version is: interactions are records with deadlines and defaults, answered from any channel, and a turn that is interrupted is **lost** rather than resumed — with that stated in the interface rather than implied | Loses the property the WeChat case actually needed |
 
-The first is the only one that delivers what this spec is for. Recording it here
-rather than in the plan means the next person reads the cost before the design.
+**Resolved.** The substrate is adopted rather than built, and the table above is kept because its second row is now the interesting one: the answer was published, in a package this project had not opened, and the option it rejected — "depend on a version that has it" — was the right shape with the wrong target. It is not a version pin to an old release; it is `pi-durable` `1.0.4`, which requires `pi-ai` `^1.0.4` and brings `chord` with it. [ADR-0017](../decisions.md) takes that trade knowingly.
+
+What this removes from the spec is not the design, it is the implementation. Interactions are still records with an address, a deadline, and a default action, and the section below still describes them. What changes is that the record is committed to storage by `pi-durable` before it is shown, and `resume()` is its function rather than ours.
 
 ## Default actions
 

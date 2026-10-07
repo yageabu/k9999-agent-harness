@@ -6,7 +6,7 @@ Each decision records what was chosen, what was rejected, and what it costs. Whe
 
 ## 0001 — Build on `pi-agent-core`, do not fork Pi
 
-**Status:** accepted
+**Status:** accepted, and **superseded in part** by [ADR-0017](#0017--build-on-pi-durable-and-accept-chord-with-it) — see also the correction at the end of this record.
 
 **Context.** Pi ships as one application package (`@earendil-works/pi-coding-agent`) with the kernel split into libraries beneath it: `pi-agent-core` (agent loop, sessions, compaction), `pi-ai` (models and providers), `pi-tui` (rendering), and `pi-protocol`/`pi-client`/`pi-server` (out-of-process control). A separate fork of the application already exists and would need maintenance.
 
@@ -15,6 +15,12 @@ Each decision records what was chosen, what was rejected, and what it costs. Whe
 **Consequences.** Upstream work on the agent loop, tool-call protocol, compaction, and provider coverage arrives through `npm update`. In exchange, every application-level feature is ours to write: there is no `ExtensionAPI` to borrow, and no extension ecosystem to inherit. A Pi extension is not a K9999 extension.
 
 **Rejected.** A thin layer that depends on the full Pi application would ship in a week, but the harness would then be a configuration of someone else's CLI rather than a harness. Copying the whole fork would mean maintaining two Pi trees.
+
+**Correction.** [ADR-0017](#0017--build-on-pi-durable-and-accept-chord-with-it) supersedes the decision above. Two things in this record are wrong and both are worth keeping visible, because the second follows from the first.
+
+The list of libraries attributes **sessions and compaction** to `pi-agent-core`. They are in `@earendil-works/pi-durable`, which this record does not mention. A reader who trusted the parenthetical — this project did, in [ADR-0009](#0009--the-core-never-blocks-on-a-human) — concludes the durable substrate is unpublished and plans to build it.
+
+The rejected option above is still the right rejection for *the full application*, and `pi-durable` is not that: it is a library with no CLI, no extension ecosystem to inherit, and no application-level opinions. But it is a harness, so the decision that K9999 owns everything above the kernel no longer holds. What K9999 owns now is written in ADR-0017.
 
 ---
 
@@ -168,7 +174,9 @@ In exchange, three failures stop being possible once it is built: a blocked turn
 
 **Revisit when** something published supplies the same substrate. The check is what the installed package exports, not what a checkout contains.
 
-**Rejected.** Fixing this inside a channel integration would leave the block in the core, where every future channel inherits it. A timeout-only fix converts a hang into a failure without ever recovering the answer.
+**That trigger has fired, and it was right about how to check.** `@earendil-works/pi-durable` publishes the substrate this record decided to build: an `inbox` with `steer` / `followUp` / `write` modes placed at boundaries, typed immutable entries, a `Storage` seam with memory, JSONL, and SQLite backends, and a `resume()` that picks up work a dead process left behind. The check that found it is the one this record named — what the installed package exports — and the check that missed it three records earlier was the one this record warns against. See [ADR-0017](#0017--build-on-pi-durable-and-accept-chord-with-it).
+
+**Rejected.** Fixing this inside a channel integration would leave the block in the core, where every future channel inherits it. A timeout-only fix converts a hang into a failure without ever recovering the answer. **Building it here**, which this record decided and ADR-0017 reverses.
 
 ---
 
@@ -345,3 +353,37 @@ This is [ADR-0015](#0015--borrow-the-observer-draw-only-what-the-wire-does-not-c
 **Revisit when** a task arrives that PowerShell can do and a POSIX shell cannot — managing Windows services, Hyper-V, or anything whose interface is a PowerShell module. That is a capability request, not a platform the harness cannot start on, and the two-instance shape above is the design to copy when it comes. The trigger in the first version of this record was "when a host shell exists that is not POSIX and is worth speaking to", which was already true when it was written.
 
 **Rejected.** **A PowerShell tool as this change.** Not because it cannot be done — Pi ships one, and the shape is described above. It is rejected here because the defect is that the harness names a shell instead of finding one, and a second tool does not fix that: it would leave the named shell in place and add a capability beside it. The Windows answer this record needs is the one Pi also ships as its default, which is to find the bash that is already on the machine. A PowerShell tool is a capability to add deliberately, for commands whose interface is a module, and it belongs in a spec of its own. **Refusing to support Windows.** Defensible and cheap, and it would let a user install a package that starts and then edits without verifying. **Doing nothing.** The spawn error is already handled, so the harness never crashes — it just fails quietly, which is the worst of the three.
+
+---
+
+## 0017 — Build on `pi-durable`, and accept chord with it
+
+**Status:** accepted
+
+**Context.** [ADR-0001](#0001--build-on-pi-agent-core-do-not-fork-pi) decided to depend on `pi-agent-core` and `pi-ai` and own everything above them. [ADR-0009](#0009--the-core-never-blocks-on-a-human) then concluded that the durable substrate a non-blocking core needs is **not published**, and that K9999 must therefore build it here — an `Storage` seam over immutable entries, an operation state total after every transition, and a `resume()` that reads it. That conclusion is wrong, and it was reached the same way as the PowerShell error in [ADR-0016](#0016--resolve-a-shell-rather-than-add-a-second-one): by reading one package instead of looking. `pi-agent-core` 1.0.2 does not carry sessions or compaction. **`@earendil-works/pi-durable` does.**
+
+The package is what ADR-0009 said had to be written:
+
+> A durable agent harness. Conversations, model turns, tool calls, and your own state are committed to storage before anything is shown. If the process dies mid-turn, reopening the storage picks the work up where it stopped.
+
+It ships the substrate in named pieces: `harness/inbox` with `steer` / `followUp` / `write` modes and boundary placement at `postTools` or `final`; typed immutable entries (`UserEntry`, `AssistantEntry`, `ToolResultEntry`, `ResetEntry`, `CompactionEntry`) with `head: "self"` resets; a `Storage` seam with memory, JSONL, and SQLite backends and a `prepareCommit` carrying a sequence number; `session/transaction`, `session/forks`, `session/observation`; idempotent submissions by `requestId`; `usage` per conversation; and a task graph with child tasks and subagents.
+
+ADR-0001 also states a fact that is not true, and it is worth naming because it is where ADR-0009's error came from: it attributes "agent loop, **sessions, compaction**" to `pi-agent-core`. The first is there. The other two are in `pi-durable`. A premise that was wrong on arrival produced a conclusion that was wrong on arrival.
+
+The cost is `@earendil-works/chord` — "an application-composition runtime for systems assembled from plugins/extensions", providing facets, services, replicated state, delta tracking, and a remote-service boundary. That is the class of thing ADR-0001 ruled out, and one thing about it changes the calculation: chord's own stated motivating case is the one this project now has.
+
+> A single application feature may need to run in several environments: for example, an **agent worker, a terminal UI, and a remote WebUI**.
+
+**Decision.** Depend on `pi-durable`, and accept chord transitively. K9999 stops owning the harness layer and keeps everything above it: profiles, prompt assembly, tool selection, the rendering vocabulary and its sinks, the launch commands, and the measurement harness. The agent loop, sessions, durability, compaction, usage accounting, and the interaction record become `pi-durable`'s.
+
+**Consequences.** This is an identity change, not a dependency change, and it should be read as one. ADR-0001's rejected option said a thin layer over someone else's harness "would ship in a week, but the harness would then be a configuration of someone else's CLI rather than a harness". `pi-durable` is a library rather than a CLI, and it is the layer K9999 was going to spend its largest spec reimplementing — but it does take the name.
+
+`pi-durable` requires `pi-ai` `^1.0.4`; K9999 has 1.0.2, so the model layer moves up with it.
+
+The risk is stated by the package itself: **"Experimental. The API changes without notice between releases."** K9999 is pinned and the version is recorded, and this is the first dependency in the project whose upgrade is a project, not a chore. [ADR-0012](#0012--measurement-precedes-optimization) exists because this project has already been burned by believing a version number; this is the opposite risk, of a version that moves.
+
+What it buys is the web interface. `viewState()` exposes the structural view a UI needs — `entries`, `pi.live` with streamed partials, `pi.inbox`, `pi.usage`, `pi.agent` — and `watch()` delivers each commit as the exact operations a remote client applies. Late and reconnecting clients start from the current view, which is what a browser refresh is. The transport for [SPEC 0009](specs/0009-web-interface.md) is not designed here; it is adopted.
+
+**Revisit when** an `pi-durable` release breaks K9999 in a way that costs more than the substrate was worth. The exit is not obvious — by then the interaction record is in its storage format — so the pin matters, and the trigger is worth watching rather than assuming.
+
+**Rejected.** **Building the substrate here**, which [ADR-0009](#0009--the-core-never-blocks-on-a-human) decided on a premise that was false. The work it described is real, it is the largest single item in the project, the design above is a published implementation of it with a conformance suite, and writing it again would be to arrive at the same place later with less evidence. **Staying on `pi-agent-core` and taking only the parts of `pi-durable` that are types**, which would mean copying an interface and losing its implementation — the worst of both, and the thing this record rejects most clearly, because the interface is the part that was going to be wrong. **Adopting chord as a general composition framework**, which nothing here asks for: it arrives as a transitive dependency of the substrate, and K9999 writes no facets and installs no plugins.
