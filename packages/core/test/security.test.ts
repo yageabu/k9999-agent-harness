@@ -10,6 +10,9 @@ import { resolveCredentials } from "../src/model.ts";
 import { createRedactor, NO_REDACTOR } from "../src/redact.ts";
 import { createBashTool } from "../src/tools/bash.ts";
 import { DEFAULT_TOOL_ENV, missingFromEnvironment, toolEnvironment } from "../src/tools/env.ts";
+import { guardedEnv } from "../src/tools/guarded-env.ts";
+import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { loadProfile } from "../src/profile.ts";
 import type { Profile } from "../src/profile.ts";
 
@@ -136,6 +139,55 @@ describe("redaction of tool output", () => {
 	it("is a no-op when there is nothing to protect", () => {
 		const result = NO_REDACTOR.redact("nothing to see");
 		assert.deepEqual(result, { text: "nothing to see", hits: [] });
+	});
+});
+
+describe("the guarded environment, which is where the allowlist has to live", () => {
+	async function run(
+		env: ReturnType<typeof guardedEnv>,
+		command: string,
+		options: { inheritEnv?: boolean } = {},
+	): Promise<string> {
+		let out = "";
+		await env.exec(command, { ...options, onOutput: (text: string) => { out += text; } }, BACKGROUND_CONTEXT);
+		return out.trim();
+	}
+
+	it("refuses an inherited environment even when the caller asks for one", async () => {
+		// This is the whole reason it is a wrapper. pi-durable's own bash tool passes
+		// `inheritEnv: true`, and `getShellEnv` spreads `process.env` *underneath*
+		// `shellEnv` — so a `shellEnv` allowlist is an override layer, not a filter.
+		// Measured through NodeExecutionEnv with the allowlist set: 36 bytes.
+		process.env.K9999_DEMO_SECRET = DEMO_SECRET;
+		const env = guardedEnv({ inner: new NodeExecutionEnv({ cwd: process.cwd() }), allow: DEFAULT_TOOL_ENV });
+		assert.equal(await run(env, "printenv DEEPSEEK_API_KEY | wc -c", { inheritEnv: true }), "0");
+		assert.equal(await run(env, "printenv K9999_DEMO_SECRET | wc -c", { inheritEnv: true }), "0");
+		delete process.env.K9999_DEMO_SECRET;
+	});
+
+	it("keeps a shell that works, so the fix is not a broken environment", async () => {
+		const env = guardedEnv({ inner: new NodeExecutionEnv({ cwd: process.cwd() }), allow: DEFAULT_TOOL_ENV });
+		assert.ok(Number(await run(env, "echo $PATH | wc -c")) > 1);
+		assert.ok(Number(await run(env, "printenv HOME | wc -c")) > 1);
+	});
+
+	it("delegates everything it does not override", async () => {
+		// ExecutionEnv is wide. A wrapper that dropped a method would look like a
+		// broken tool rather than a broken wrapper.
+		const inner = new NodeExecutionEnv({ cwd: process.cwd() });
+		const env = guardedEnv({ inner, allow: DEFAULT_TOOL_ENV });
+		assert.equal(env.id, inner.id);
+		assert.equal(env.cwd, inner.cwd);
+		const read = await env.readTextFile("package.json", BACKGROUND_CONTEXT);
+		assert.equal(read.ok, true);
+	});
+
+	it("does not redact, because a credential split across chunks would survive it", () => {
+		// Redaction belongs to the tool, on the assembled result. An environment that
+		// redacted per chunk would look like protection and miss the case that
+		// matters — the same failure as truncating before redacting.
+		const source = guardedEnv.toString();
+		assert.doesNotMatch(source, /redact/i);
 	});
 });
 

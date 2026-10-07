@@ -12,6 +12,38 @@ $ printenv DEEPSEEK_API_KEY | wc -c    # 36 before, 0 after
 $ env | wc -l                          # 49 before, 10 after
 ```
 
+**The allowlist belongs to the execution environment, not to a tool.** That was
+not obvious and it cost a measurement to find out. `NodeExecutionEnv` takes a
+`shellEnv`, which looks like the place for it, and is not:
+
+```js
+function getShellEnv(baseEnv, extraEnv, inheritEnv = true) {
+    if (!inheritEnv) return { ...extraEnv };
+    return { ...process.env, ...baseEnv, ...extraEnv };   // process.env is underneath
+}
+```
+
+`process.env` is spread **under** `shellEnv`, so a `shellEnv` allowlist is an
+override layer rather than a filter — and pi-durable's own `bash` tool passes
+`inheritEnv: true`, so the migrated harness had the same leak in the same shape.
+Measured through `NodeExecutionEnv` with the allowlist set:
+
+```console
+shellEnv + inheritEnv: true    -> 36 bytes, 48 variables   # the leak
+shellEnv + inheritEnv: false   ->  0 bytes,  3 variables
+```
+
+So `guardedEnv` wraps an `ExecutionEnv` and refuses an inherited environment
+whatever the caller asks for. A wrapper rather than a flag because it protects
+every tool that goes through the environment — pi-durable's own, K9999's, and any
+extension added later. **A tool that forgets to ask is the normal case, and this
+is what makes forgetting safe.**
+
+It does not redact, deliberately: a credential split across two `onOutput`
+chunks does not match the value being looked for, so per-chunk redaction would
+look like protection and miss the case that matters. Redaction stays in the tool,
+on the assembled result.
+
 Links 2, 3, and 4 are not built.
 
 ## Problem
