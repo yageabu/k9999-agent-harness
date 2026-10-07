@@ -1,6 +1,12 @@
 # 0009 — A browser surface
 
-**Status:** `accepted`
+**Status:** `building`
+
+Tier A and Tier B are implemented, with a test per security rule and one per
+endpoint. K9999's own profiles, prompt assembly, and tools are not wired in yet:
+the harness underneath moved in [ADR-0017](../decisions.md), and the layer above
+it is the next piece of work, so the server runs on `pi-durable`'s built-in
+coding tools. Nothing in this spec depends on which tools those are.
 
 ## Problem
 
@@ -48,7 +54,7 @@ The pieces below exist and are not this spec's work. Naming them is the point �
 A process that opens a `Harness` on a conversation and serves its view.
 
 - **`GET /`** returns one HTML document, from disk, with no build step and no framework.
-- **`GET /events`** is a Server-Sent Events stream. The first frame is `watch.value`; each later frame is one commit's operations, serialized as JSON.
+- **`GET /events`** is a Server-Sent Events stream. Frames are whole views: the first is `watch.value`, and each later one is the view as of one commit. pi-durable's own `watch()` sends the operations between revisions, and this sends the revision — because applying those operations in a browser means shipping chord's delta format there, which is a second implementation of the thing that already has one. The view is bounded (the active transcript and five documents), and pi-durable already collapses to a whole-view frame under back-pressure, so the frame shape is one it supports. Revisit if a transcript ever grows large enough that resending it per commit is measurable.
 - **`GET /state`** returns the current view. SSE reconnects are routine, and a client that reconnects mid-stream needs a fresh base rather than a resumed one.
 
 SSE rather than WebSocket because the traffic is one-way, the framing is already line-oriented, and reconnect is built into the protocol. Tier B adds writes, which are ordinary POSTs.
