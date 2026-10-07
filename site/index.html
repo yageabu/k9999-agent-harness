@@ -3,1099 +3,605 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>K9999 Agent Harness</title>
-<link rel="icon" type="image/svg+xml" href="mark.svg">
-<meta name="description" content="K9999 Agent Harness —— 永不阻塞，先测量。在 pi-agent-core 之上组装你自己的 Agent Harness：内核永不阻塞等人，决策分层且可选，不可逆设闸，每一步都可测量。">
+<title>K9999 — 永不阻塞，先测量</title>
+<meta name="description" content="一个可评测、可观测、有安全边界、持续迭代的 Agent 应用。建在 pi-durable 之上。">
+<link rel="icon" href="mark.svg" type="image/svg+xml">
 <style>
-	:root {
-		--bg: #08090b;
-		--panel: #0f1114;
-		--panel-2: #14171b;
-		--line: #1f2429;
-		--line-soft: #171b1f;
-		--text: #e7e9ec;
-		--muted: #878e96;
-		--dim: #5b6269;
-		--amber: #f0a730;
-		--green: #58c98a;
-		--red: #e06b5f;
-		--sans: "Inter", "Helvetica Neue", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
-		--mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", Consolas, "Microsoft YaHei Mono", monospace;
-		--wrap: 1080px;
-	}
-
-	* { box-sizing: border-box; }
-	html { -webkit-text-size-adjust: 100%; }
-
-	body {
-		margin: 0;
-		background: var(--bg);
-		color: var(--text);
-		font-family: var(--sans);
-		font-size: 16px;
-		line-height: 1.7;
-		-webkit-font-smoothing: antialiased;
-		text-rendering: optimizeLegibility;
-	}
-
-	.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 28px; }
-
-	a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
-	a:hover { border-bottom-color: var(--amber); }
-
-	code, .mono, kbd { font-family: var(--mono); font-variant-ligatures: none; }
-	code { font-size: 0.93em; }
-
-	/* ---------- header ---------- */
-
-	header {
-		border-bottom: 1px solid var(--line);
-		position: sticky;
-		top: 0;
-		background: rgba(8, 9, 11, 0.92);
-		backdrop-filter: blur(8px);
-		z-index: 10;
-	}
-
-	.bar { display: flex; align-items: center; gap: 20px; height: 58px; }
-
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-family: var(--mono);
-		font-weight: 600;
-		letter-spacing: -0.01em;
-	}
-
-	.brand .logo { display: block; width: 26px; height: 26px; flex: none; }
-
-	.brand .name { color: var(--amber); }
-
-	.brand .sub {
-		color: var(--dim);
-		font-size: 12px;
-		font-weight: 400;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.bar nav { margin-left: auto; display: flex; gap: 22px; font-size: 13.5px; }
-	.bar nav a { border: none; color: var(--muted); }
-	.bar nav a:hover { color: var(--text); }
-
-	/* ---------- chips ---------- */
-
-	.chip {
-		font-family: var(--mono);
-		font-size: 11px;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
-		padding: 3px 9px;
-		border-radius: 3px;
-		border: 1px solid var(--line);
-		color: var(--dim);
-		display: inline-block;
-		white-space: nowrap;
-	}
-
-	.chip.spec { color: var(--amber); border-color: rgba(240, 167, 48, 0.34); background: rgba(240, 167, 48, 0.07); }
-	.chip.building { color: var(--green); border-color: rgba(240, 167, 48, 0.34); background: rgba(240, 167, 48, 0.07); }
-	.chip.shipped { color: var(--green); border-color: rgba(88, 201, 138, 0.3); background: rgba(88, 201, 138, 0.06); }
-	.chip.reject { color: var(--muted); }
-
-	/* ---------- hero ---------- */
-
-	.hero { padding: 88px 0 66px; border-bottom: 1px solid var(--line); }
-
-	/* Mark and wordmark on one baseline. Both scale with the viewport, so the
-	   proportion between them holds from a phone to a wide screen. */
-	.lockup {
-		display: flex;
-		align-items: center;
-		gap: clamp(20px, 3vw, 38px);
-	}
-
-	.lockup .lockup-mark {
-		display: block;
-		flex: none;
-		height: clamp(62px, 10.4vw, 124px);
-		width: auto;
-	}
-
-	.eyebrow {
-		font-family: var(--mono);
-		font-size: 12px;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--dim);
-		margin: 0 0 22px;
-	}
-
-	h1 {
-		margin: 0;
-		font-size: clamp(42px, 7.4vw, 84px);
-		line-height: 1.02;
-		letter-spacing: -0.042em;
-		font-weight: 650;
-	}
-
-	h1 .thin { color: var(--dim); font-weight: 300; }
-
-	.kicknote {
-		margin: 20px 0 0;
-		font-size: 17px;
-		line-height: 1.6;
-		color: var(--muted);
-		max-width: 660px;
-	}
-
-	.lede { margin: 20px 0 0; max-width: 690px; font-size: 18.5px; line-height: 1.72; color: #c3c8ce; }
-	.lede strong { color: var(--text); font-weight: 600; }
-
-	.slogan {
-		margin: 22px 0 0;
-		font-size: clamp(19px, 2.3vw, 24px);
-		font-weight: 600;
-		letter-spacing: -0.012em;
-		color: var(--text);
-	}
-
-	.slogan .en {
-		display: block;
-		margin-top: 7px;
-		font-family: var(--mono);
-		font-size: 13px;
-		font-weight: 400;
-		letter-spacing: 0.03em;
-		color: var(--amber);
-	}
-
-	.commands {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 1px;
-		background: var(--line);
-		border: 1px solid var(--line);
-		border-radius: 4px;
-		overflow: hidden;
-		margin-top: 28px;
-		max-width: 690px;
-	}
-
-	.commands span {
-		background: var(--panel);
-		padding: 15px 18px;
-		font-size: 14.5px;
-		color: var(--muted);
-	}
-
-	.commands b { font-family: var(--mono); font-weight: 600; margin-right: 8px; }
-	.commands b.ok { color: var(--amber); }
-	.commands b.pending { color: var(--dim); }
-	.commands em { display: block; font-style: normal; font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin-top: 5px; letter-spacing: 0.04em; }
-
-	.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
-
-	.btn {
-		font-family: var(--mono);
-		font-size: 13.5px;
-		padding: 10px 18px;
-		border: 1px solid var(--line);
-		background: var(--panel);
-		color: var(--text);
-		border-radius: 3px;
-		display: inline-flex;
-		align-items: center;
-		gap: 9px;
-	}
-
-	.btn.primary { background: var(--amber); border-color: var(--amber); color: #14100a; font-weight: 600; }
-	.btn .tick { color: var(--green); }
-	.btn.primary .tick { color: #14100a; }
-
-	/* ---------- sections ---------- */
-
-	section { padding: 72px 0; border-bottom: 1px solid var(--line); }
-
-	.sec-head { margin-bottom: 36px; }
-
-	.sec-num { font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 0.1em; }
-
-	h2 { margin: 12px 0 0; font-size: 28px; line-height: 1.24; letter-spacing: -0.022em; font-weight: 620; }
-
-	.sec-head p { margin: 14px 0 0; max-width: 690px; color: var(--muted); font-size: 16.5px; }
-
-	.sec-head .chip { margin-bottom: 14px; }
-
-	/* ---------- panels ---------- */
-
-	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-	.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-
-	.cell { background: var(--panel); padding: 24px 22px; }
-	.cell h3 { margin: 0 0 10px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; color: var(--amber); font-weight: 600; }
-	.cell p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.66; }
-	.cell .kpi { font-family: var(--mono); font-size: 33px; letter-spacing: -0.03em; color: var(--text); display: block; margin-bottom: 6px; line-height: 1.1; }
-	.cell .kpi small { font-size: 14px; color: var(--muted); letter-spacing: 0; }
-
-	/* ---------- code block ---------- */
-
-	pre {
-		margin: 0;
-		background: var(--panel);
-		border: 1px solid var(--line);
-		border-radius: 4px;
-		padding: 22px 24px;
-		overflow-x: auto;
-		font-size: 13.5px;
-		line-height: 1.78;
-		color: #ccd2d8;
-	}
-
-	pre .c { color: var(--dim); }
-	pre .a { color: var(--amber); }
-	pre .g { color: var(--green); }
-	pre .r { color: var(--red); }
-	pre .m { color: #7f8b96; }
-
-	.term-head {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 11px 14px;
-		border: 1px solid var(--line);
-		border-bottom: none;
-		border-radius: 4px 4px 0 0;
-		background: var(--panel-2);
-		font-family: var(--mono);
-		font-size: 12px;
-		color: var(--dim);
-	}
-
-	.term-head .dot { width: 9px; height: 9px; border-radius: 50%; background: #2a3038; }
-	.term-head .dot.on { background: var(--amber); }
-	.term-head span.path { margin-left: 8px; }
-	.term-wrap pre { border-radius: 0 0 4px 4px; }
-
-	/* ---------- tables ---------- */
-
-	.table-scroll { overflow-x: auto; }
-
-	table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-
-	th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
-
-	thead th {
-		font-family: var(--mono);
-		font-size: 11.5px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--dim);
-		font-weight: 500;
-		border-bottom: 1px solid var(--line);
-		white-space: nowrap;
-	}
-
-	tbody tr:last-child td { border-bottom: none; }
-	td.num, th.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
-	td.win { color: var(--green); }
-	td.lose { color: var(--dim); }
-	td.mono, th.mono { font-family: var(--mono); }
-
-	.table-panel { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); overflow: hidden; }
-	.table-note { margin: 14px 0 0; font-size: 13.5px; color: var(--dim); }
-
-	/* ---------- rules list ---------- */
-
-	ol.rules { counter-reset: r; list-style: none; margin: 0; padding: 0; }
-
-	ol.rules li {
-		counter-increment: r;
-		display: grid;
-		grid-template-columns: 46px 1fr;
-		gap: 4px 16px;
-		padding: 17px 0;
-		border-bottom: 1px solid var(--line-soft);
-	}
-
-	ol.rules li:last-child { border-bottom: none; }
-
-	ol.rules li::before {
-		content: counter(r, decimal-leading-zero);
-		font-family: var(--mono);
-		font-size: 12.5px;
-		color: var(--dim);
-		padding-top: 3px;
-	}
-
-	ol.rules b { display: block; font-weight: 600; margin-bottom: 3px; }
-	ol.rules span { color: var(--muted); font-size: 15px; }
-	ol.rules em { font-style: normal; color: var(--amber); font-family: var(--mono); font-size: 13.5px; }
-
-	/* ---------- gaps ---------- */
-
-	.gaps { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-	.gap-row { background: var(--panel); padding: 20px 24px; display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: baseline; }
-	.gap-row .tag { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: 0.06em; }
-	.gap-row .tag.done { color: var(--green); }
-	.gap-row .tag.open { color: var(--red); }
-	.gap-row p { margin: 0; color: var(--muted); font-size: 15px; }
-
-	/* ---------- provenance note ---------- */
-
-	.prov {
-		margin: 16px 0 0;
-		padding: 14px 18px;
-		border-left: 2px solid var(--line);
-		color: var(--dim);
-		font-size: 13.5px;
-	}
-
-	.prov b { color: var(--muted); font-weight: 500; }
-
-	/* ---------- footer ---------- */
-
-	footer { padding: 52px 0 68px; color: var(--dim); font-size: 13.5px; }
-	footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
-	footer .logo { display: block; width: 34px; height: 34px; flex: none; }
-	footer .mono { font-size: 12.5px; }
-
-	/* A sticky header overlaps content in full-page screenshots and in PDF
-	   export, because neither scrolls the page. */
-	@media print {
-		header { position: static; backdrop-filter: none; }
-		section { break-inside: avoid; }
-	}
-
-	@media (max-width: 860px) {
-		h1 { font-size: clamp(38px, 6.2vw, 68px); }
-		.lockup { gap: 20px; }
-		.lockup .lockup-mark { height: clamp(56px, 13vw, 84px); }
-		.grid-3, .grid-2 { grid-template-columns: 1fr; }
-		.bar nav { display: none; }
-		.hero { padding: 60px 0 50px; }
-		section { padding: 54px 0; }
-		.gap-row { grid-template-columns: 1fr; gap: 8px; }
-		h2 { font-size: 23px; }
-	}
+/*
+ * Stripe 风格设计系统。三条与上游文档不同的地方，都是本仓库的约束决定的：
+ *   1) 字体用系统栈。设计文档要求 Inter（Google Fonts），而本站的 check-site.mjs
+ *      禁止任何外部请求 —— 一个 CDN 字体就会让 CI 挂掉。
+ *   2) 数值单元格全部 tnum。
+ *   3) 渐变网格用内联 SVG，不是 CSS 渐变 —— 原设计是机理性噪点团块。
+ */
+:root {
+	--primary: #533afd;
+	--primary-deep: #4434d4;
+	--primary-press: #2e2b8c;
+	--primary-soft: #665efd;
+	--primary-subdued: #b9b9f9;
+	--brand-dark: #1c1e54;
+	--ink: #0d253d;
+	--ink-2: #273951;
+	--ink-mute: #64748d;
+	--on-primary: #ffffff;
+	--canvas: #ffffff;
+	--canvas-soft: #f6f9fc;
+	--canvas-cream: #f5e9d4;
+	--hairline: #e3e8ee;
+	--hairline-input: #a8c3de;
+	--ruby: #ea2261;
+	--magenta: #f96bee;
+	--lemon: #9b6829;
+	--shadow-1: rgba(0, 55, 112, 0.08) 0 1px 3px;
+	--shadow-2: rgba(0, 55, 112, 0.08) 0 8px 24px, rgba(0, 55, 112, 0.04) 0 2px 6px;
+	--font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	background: var(--canvas);
+	color: var(--ink);
+	font-family: var(--font);
+	font-weight: 300;
+	font-size: 15px;
+	line-height: 1.4;
+	/* ss01 全局，跟设计文档一致；系统字体上它大多不生效，但声明的意图要留下来 */
+	font-feature-settings: "ss01";
+	-webkit-font-smoothing: antialiased;
+}
+
+/* 任何数值单元格：tnum。这是这个品牌"金融数据"的静默信号 */
+.num, code, pre, td.n { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.narrow { max-width: 760px; }
+
+/* 显示层级：weight 300 + 负字距，这是排版签名 */
+.d-xxl { font-size: 56px; font-weight: 300; line-height: 1.03; letter-spacing: -1.4px; margin: 0; }
+.d-xl  { font-size: 48px; font-weight: 300; line-height: 1.15; letter-spacing: -0.96px; margin: 0; }
+.d-lg  { font-size: 32px; font-weight: 300; line-height: 1.1; letter-spacing: -0.64px; margin: 0; }
+.d-md  { font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; margin: 0; }
+.h-lg  { font-size: 22px; font-weight: 300; line-height: 1.1; letter-spacing: -0.22px; margin: 0; }
+.h-md  { font-size: 20px; font-weight: 300; line-height: 1.4; letter-spacing: -0.2px; margin: 0; }
+.h-sm  { font-size: 18px; font-weight: 300; line-height: 1.4; margin: 0; }
+.body-lg { font-size: 16px; line-height: 1.5; }
+.caption { font-size: 13px; color: var(--ink-mute); letter-spacing: -0.39px; }
+.micro { font-size: 11px; color: var(--ink-mute); }
+.micro-cap { font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; }
+
+p { margin: 0 0 14px; }
+.lead { font-size: 16px; line-height: 1.55; color: var(--ink-2); }
+
+/* ── 导航：浮在网格上 ─────────────────────────────────────── */
+.nav { position: relative; z-index: 2; padding: 16px 0; }
+.nav .wrap { display: flex; align-items: center; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 400; letter-spacing: -0.2px; }
+.brand img { width: 26px; height: 26px; display: block; }
+.nav-links { display: flex; gap: 22px; margin-left: auto; }
+.nav-links a { color: var(--ink-2); font-size: 14px; }
+.nav-links a:hover { color: var(--primary); text-decoration: none; }
+
+.btn {
+	display: inline-block;
+	border-radius: 9999px;
+	padding: 8px 16px;
+	font-size: 16px;
+	font-weight: 400;
+	line-height: 1;
+	border: 1px solid transparent;
+	white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-press); text-decoration: none; }
+.btn-secondary { background: var(--canvas); color: var(--primary); border-color: var(--primary); }
+.btn-secondary:hover { background: var(--canvas-soft); text-decoration: none; }
+.btn-sm { font-size: 14px; padding: 8px 14px; }
+
+/* ── 渐变网格：上三分之一 ─────────────────────────────────── */
+.mesh {
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: 560px;
+	overflow: hidden;
+	pointer-events: none;
+}
+.mesh svg { width: 100%; height: 100%; display: block; }
+.hero { position: relative; padding: 56px 0 72px; }
+.hero .inner { position: relative; z-index: 1; max-width: 820px; }
+.hero h1 { margin: 18px 0 20px; }
+.hero .lead { max-width: 660px; font-size: 18px; }
+.cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; align-items: center; }
+.install {
+	display: inline-flex; align-items: center; gap: 10px;
+	background: var(--canvas); border: 1px solid var(--hairline);
+	border-radius: 6px; padding: 9px 12px; font-family: var(--mono); font-size: 13px;
+	color: var(--ink-2); box-shadow: var(--shadow-1);
+}
+
+.pill {
+	display: inline-block; border-radius: 9999px; padding: 4px 8px;
+	background: var(--primary-subdued); color: var(--primary-deep);
+	font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase;
+}
+.pill-quiet { background: var(--canvas-soft); color: var(--ink-mute); }
+
+/* ── 版块 ─────────────────────────────────────────────────── */
+section { padding: 72px 0; }
+section.soft { background: var(--canvas-soft); }
+section.cream { background: var(--canvas-cream); }
+section.dark { background: var(--brand-dark); color: var(--on-primary); }
+section.dark a { color: var(--primary-subdued); }
+section.dark .caption, section.dark .micro { color: rgba(255, 255, 255, 0.6); }
+section > .wrap > header { margin-bottom: 36px; }
+section > .wrap > header p { margin-top: 10px; max-width: 700px; color: var(--ink-2); }
+section.dark > .wrap > header p { color: rgba(255, 255, 255, 0.72); }
+
+.grid { display: grid; gap: 20px; }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1024px) { .g4 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } .d-xxl { font-size: 36px; letter-spacing: -0.9px; } .d-xl { font-size: 30px; } .d-lg { font-size: 26px; } }
+
+.card {
+	background: var(--canvas); border: 1px solid var(--hairline);
+	border-radius: 12px; padding: 32px;
+}
+.card h3 { margin: 0 0 8px; }
+.card p:last-child { margin-bottom: 0; }
+.card .micro-cap { color: var(--ink-mute); display: block; margin-bottom: 10px; }
+.card-featured { background: var(--brand-dark); color: var(--on-primary); border-color: transparent; }
+.card-featured .micro-cap, .card-featured p { color: rgba(255, 255, 255, 0.72); }
+.card-featured a { color: var(--primary-subdued); }
+
+/* 深色产品面板：仪表盘式复合体 */
+.mock {
+	background: var(--brand-dark); border-radius: 12px; padding: 24px;
+	box-shadow: var(--shadow-2); color: var(--on-primary); overflow: hidden;
+}
+.mock .chrome { display: flex; gap: 6px; margin-bottom: 16px; }
+.mock .chrome i { width: 9px; height: 9px; border-radius: 9999px; background: rgba(255,255,255,0.22); display: block; }
+.mock pre { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; color: rgba(255,255,255,0.82); overflow-x: auto; }
+.mock pre .k { color: var(--primary-subdued); }
+.mock pre .s { color: #a5e8c4; }
+.mock pre .m { color: rgba(255,255,255,0.45); }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+th { font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; color: var(--ink-mute); }
+td.n { text-align: right; font-variant-numeric: tabular-nums; }
+section.dark th { color: rgba(255,255,255,0.55); }
+section.dark td, section.dark th { border-bottom-color: rgba(255,255,255,0.12); }
+tr:last-child td { border-bottom: none; }
+
+pre.block {
+	background: var(--canvas); border: 1px solid var(--hairline); border-radius: 6px;
+	padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px;
+	line-height: 1.7; color: var(--ink-2); margin: 0 0 14px; box-shadow: var(--shadow-1);
+}
+section.dark pre.block { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.85); box-shadow: none; }
+pre.block .c { color: var(--ink-mute); }
+
+.stack { font-family: var(--mono); font-size: 12.5px; line-height: 1.9; white-space: pre; overflow-x: auto; color: var(--ink-2); }
+section.dark .stack { color: rgba(255,255,255,0.8); }
+
+ul.tight { margin: 0; padding-left: 18px; }
+ul.tight li { margin-bottom: 7px; }
+
+hr.rule { border: 0; border-top: 1px solid var(--hairline); margin: 0; }
+
+footer { padding: 64px 0 48px; }
+footer .cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 40px; }
+@media (max-width: 720px) { footer .cols { grid-template-columns: repeat(2, 1fr); } }
+footer h4 { font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 12px; }
+footer ul { list-style: none; margin: 0; padding: 0; }
+footer li { margin-bottom: 8px; font-size: 13px; }
+footer li a { color: var(--ink-2); }
+footer .legal { border-top: 1px solid var(--hairline); padding-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-mute); font-size: 11px; }
 </style>
 </head>
 <body>
 
-<header>
-	<div class="wrap bar">
-		<div class="brand">
-			<img class="logo" src="mark.svg" alt="" width="26" height="26">
-			<span class="name">K9999</span>
-			<span class="sub">Agent Harness</span>
-		</div>
-		<nav>
-			<a href="#stance-1">不阻塞</a>
-			<a href="#stance-2">决策分层</a>
-			<a href="#stance-3">设闸</a>
-			<a href="#stance-4">测量</a>
-			<a href="#specs">Specs</a>
+<!-- 渐变网格。内联 SVG，因为原设计是有机团块而不是 CSS 渐变，
+     也因为本站禁止任何外部资源 —— data: URI 和片段引用是允许的。 -->
+<div class="mesh" aria-hidden="true">
+<svg viewBox="0 0 1440 560" preserveAspectRatio="xMidYMid slice">
+	<defs>
+		<filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+			<feGaussianBlur stdDeviation="72" />
+		</filter>
+		<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+			<stop offset="1" stop-color="#ffffff" stop-opacity="1"/>
+		</linearGradient>
+	</defs>
+	<rect width="1440" height="560" fill="#ffffff"/>
+	<g filter="url(#soft)">
+		<ellipse cx="130"  cy="150" rx="330" ry="210" fill="#f5e9d4"/>
+		<ellipse cx="430"  cy="240" rx="300" ry="200" fill="#f3c9a0" opacity="0.75"/>
+		<ellipse cx="720"  cy="150" rx="340" ry="220" fill="#cdc4fb"/>
+		<ellipse cx="1010" cy="250" rx="330" ry="215" fill="#7d6bfd" opacity="0.55"/>
+		<ellipse cx="1280" cy="140" rx="300" ry="200" fill="#f96bee" opacity="0.42"/>
+		<ellipse cx="1400" cy="270" rx="220" ry="180" fill="#ea2261" opacity="0.30"/>
+	</g>
+	<rect width="1440" height="560" fill="url(#fade)"/>
+</svg>
+</div>
+
+<nav class="nav">
+	<div class="wrap">
+		<a class="brand" href="#"><img src="mark.svg" alt="">K9999</a>
+		<div class="nav-links">
+			<a href="#definition">是什么</a>
 			<a href="#status">现状</a>
-			<a href="#changelog">更新</a>
-			<a href="#support">合作</a>
-		</nav>
+			<a href="#architecture">架构</a>
+			<a href="#security">安全</a>
+			<a href="#contracts">契约</a>
+			<a href="#start">快速开始</a>
+		</div>
+	</div>
+</nav>
+
+<header class="hero">
+	<div class="wrap">
+		<div class="inner">
+			<span class="pill">Agent Harness</span>
+			<h1 class="d-xxl">永不阻塞。<br>先测量。</h1>
+			<p class="lead">
+				一个可评测、可观测、有安全边界、持续迭代的 Agent 应用。
+				两个启动命令，一个实现：<code>k9999</code> 写代码，<code>kula</code> 读数据。
+			</p>
+			<div class="cta">
+				<a class="btn btn-primary" href="#start">快速开始</a>
+				<a class="btn btn-secondary" href="https://github.com/yageabu/k9999-agent-harness">源码</a>
+				<span class="install">npm i -g k9999</span>
+			</div>
+		</div>
 	</div>
 </header>
 
-<div class="wrap">
-
-	<div class="hero">
-		<p class="eyebrow">MIT · TypeScript · Node ≥ 22.19</p>
-		<div class="lockup">
-			<img class="lockup-mark" src="logo.svg" alt="" width="124" height="124">
-			<h1>K9999<br><span class="thin">Agent Harness</span></h1>
-		</div>
-		<p class="kicknote">在 pi-agent-core 之上，组装你自己的 Agent Harness。</p>
-		<p class="slogan">永不阻塞，先测量<span class="en">Never blocks. Measures first.</span></p>
-		<p class="lede">
-			<strong>建立在 Pi 之上</strong> —— 感谢它的作者把 Agent 内核、模型层和终端渲染做成了可复用的库，而不是一个应用。
-			内核、模型层、provider 覆盖从上游来；profile、prompt 组装、工具注册表、启动命令、以及测量工具全部归本仓库所有。
-			四条立场已经写成可验收的契约：测量工具和两个启动命令已经在跑，其余三条还没开始。
-			这一页会一直标明哪些数字是实测的，哪些东西还不存在。
-		</p>
-		<div class="commands">
-			<span><b class="ok">k9999</b>写代码、改代码</span>
-			<span><b class="ok">kula</b>读数据、报告它说了什么</span>
-		</div>
-		<div class="hero-actions">
-			<span class="btn primary"><span class="tick">$</span> npm run check</span>
-			<span class="btn"><span class="tick">✓</span> 135 tests · 0 credentials</span>
-			<span class="btn">7 specs · 2 shipped · 2 building</span>
+<!-- ── 定义 ─────────────────────────────────────────────── -->
+<section id="definition">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">定义</span>
+			<h2 class="d-xl">四条属性，都不在 harness 里。</h2>
+			<p>
+				<code>pi-agent-core</code> 提供 agent 循环、sessions、compaction；
+				<code>pi-durable</code> 提供持久化、inbox、task graph、usage。
+				下面这四样它们<strong>故意都不表态</strong> —— 所以它们才是这个项目要做的事。
+			</p>
+		</header>
+		<div class="grid g4">
+			<div class="card">
+				<span class="micro-cap">Evaluatable</span>
+				<h3 class="h-lg">可评测</h3>
+				<p class="caption">结果由谓词判定，不由模型对自己的评价判定。任务集、转录、离线 replay、预算。</p>
+			</div>
+			<div class="card">
+				<span class="micro-cap">Observable</span>
+				<h3 class="h-lg">可观测</h3>
+				<p class="caption">终端和浏览器两个界面，读的是同一份已提交状态。渲染词汇表与 sink 接缝。</p>
+			</div>
+			<div class="card">
+				<span class="micro-cap">Bounded</span>
+				<h3 class="h-lg">有安全边界</h3>
+				<p class="caption">凭据隔离、工具权限门、网络出口可见、审计可回查。四条规则，每条一个测试。</p>
+			</div>
+			<div class="card">
+				<span class="micro-cap">Iterating</span>
+				<h3 class="h-lg">持续迭代</h3>
+				<p class="caption">上一次会话的结果改变下一次的输入，而记忆的置信度来自实测结果，不来自模型的自信。</p>
+			</div>
 		</div>
 	</div>
+</section>
 
-	<section id="stance-1">
-		<div class="sec-head">
-			<span class="chip spec">SPEC 0001 · 已接受 · 未实现</span>
-			<p class="sec-num">01 / STANCE</p>
-			<h2>内核永不阻塞等人</h2>
+<!-- ── 现状 ─────────────────────────────────────────────── -->
+<section id="status" class="soft">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">现状</span>
+			<h2 class="d-xl">六条主张，三条有代码。</h2>
 			<p>
-				一个用 <code>await</code> 向人提问的内核，只有一个地方能交出答案。
-				这不是任何集成的缺陷，这是 <code>await</code> 的含义。Pi 的微信桥就卡在这里：
-				终端弹出确认，终端前没人，微信侧于是永远等一个不会结束的回合。
+				没有数字的地方就是还没有数字。<strong>本页不写没有命令支撑的图</strong> ——
+				这是这个仓库记在 <code>docs/decisions.md</code> 里的一条规则，起因是版本号漂了两次。
 			</p>
+		</header>
+		<div class="grid g2">
+			<div class="card">
+				<span class="micro-cap">已经能跑</span>
+				<table>
+					<tr><td>评测 harness</td><td class="n caption">任务集 · 谓词 · replay · 预算</td></tr>
+					<tr><td>渲染与 sink 接缝</td><td class="n caption">文本 · diff · 每回合成本行</td></tr>
+					<tr><td>终端界面</td><td class="n caption">启动块 · 键位 · 状态头</td></tr>
+					<tr><td>浏览器界面</td><td class="n caption">会话窗格 + 请求窗格</td></tr>
+					<tr><td>凭据隔离</td><td class="n caption">env 白名单 + 输出脱敏</td></tr>
+					<tr><td>两个启动命令</td><td class="n caption">k9999 · kula</td></tr>
+				</table>
+			</div>
+			<div class="card">
+				<span class="micro-cap">还不存在</span>
+				<table>
+					<tr><td>记忆与项目 wiki</td><td class="n caption">SPEC 0010</td></tr>
+					<tr><td>权限门 · 出口 · 审计</td><td class="n caption">SPEC 0011 的后三环</td></tr>
+					<tr><td>持续迭代的评分</td><td class="n caption">SPEC 0012</td></tr>
+					<tr><td>非阻塞交互记录</td><td class="n caption">SPEC 0001</td></tr>
+					<tr><td>真实 provider 的数字</td><td class="n caption">今天全部来自脚本 provider</td></tr>
+					<tr><td>会话持久化的终端</td><td class="n caption">CLI 仍在旧路径上</td></tr>
+				</table>
+			</div>
 		</div>
-		<div class="grid-3">
-			<div class="cell">
-				<h3>记录，不是栈帧</h3>
-				<p>每次交互是一条持久记录，所以进程死掉它还在，重启能继续。原生挂起 <code>{ kind: "suspended" }</code>，不是一个挂住的 promise。</p>
-			</div>
-			<div class="cell">
-				<h3>任何通道都能答</h3>
-				<p>记录里不包含"是哪个通道问的"。CLI 和微信是平等的两个通道，先答的赢，后到的返回 <code>already_answered</code>，不覆盖。</p>
-			</div>
-			<div class="cell">
-				<h3>没人答也会结束</h3>
-				<p>没有 deadline 和默认动作的交互不允许构造。没人看的 Agent 挂住，和一个崩掉的 Agent 在外部完全无法区分。</p>
-			</div>
-		</div>
+	</div>
+</section>
 
-		<div class="sec-head" style="margin:52px 0 22px">
-			<h2 style="font-size:21px">默认动作不是猜一个值</h2>
-		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th>交互</th><th class="mono">默认</th><th>理由</th></tr>
-				</thead>
-				<tbody>
-					<tr><td>不可逆操作的审批</td><td class="mono">deny</td><td>无人值守时的破坏性动作，只有 fail-closed 是安全的</td></tr>
-					<tr><td>Agent 本可从上下文回答的问题</td><td class="mono">proceed_with_assumption</td><td>回合继续，假设写进轨迹</td></tr>
-					<tr><td>只有人能回答的问题</td><td class="mono">stop_and_report</td><td>干净结束并说明原因</td></tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="prov">
-			<b>为什么这是第一条立场而不是"支持微信"：</b>
-			"支持微信"不可测。"内核永不阻塞等人"可测 —— 六个验收标准，其中一条是"测试套件里不允许存在可能挂住的 await"。
-		</p>
-	</section>
-
-	<section id="stance-2">
-		<div class="sec-head">
-			<span class="chip spec">SPEC 0003 · 已接受 · 可选 · 未实现</span>
-			<p class="sec-num">02 / STANCE</p>
-			<h2>决策分层：判断交给判断模型</h2>
+<!-- ── 架构 ─────────────────────────────────────────────── -->
+<section id="architecture">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">架构</span>
+			<h2 class="d-xl">harness 管的是 pi-ai 之上的东西。</h2>
 			<p>
-				每轮里大量的小决策，用前沿模型做是错的工具。问它"这句话是提问还是指令"，
-				花掉一整次往返和一个大 prompt，只换来一个 bit，而且这个 bit 藏在散文里，要解析、可能畸形。
-				<strong>但这一层是可选的，而且默认关闭</strong> —— 没配 key 的人应该拿到一个能跑的 harness，不是一个配置报错。
+				不是模型，也不只是 prompt —— 是<strong>状态和策略</strong>：
+				发生过哪些回合、哪些工具调用还悬着、花了多少、进程死了怎么办、忙的时候排队输入会怎样。
 			</p>
+		</header>
+		<div class="grid g2" style="align-items:start">
+			<div class="mock">
+				<div class="chrome"><i></i><i></i><i></i></div>
+<pre>  surfaces
+  ──────────────────────────────────────────
+    web          TUI          print / eval
+         │            │              │
+  ───────┴────────────┴──────────────┴──────
+  <span class="k">K9999</span>                    这个项目要做的事
+  ──────────────────────────────────────────
+    profiles/        目录即一个 agent 类型
+    prompt 组装      authored + 生成的章节
+    sink 接缝        RenderItem 词汇表
+    测量             任务集 · 谓词 · replay · 预算
+         │
+  ───────┴──────────────────────────────────
+  <span class="k">pi-durable</span>              一个 agent 的持久运行
+  ──────────────────────────────────────────
+    sessions · storage · inbox · task graph
+    compaction · usage · resume
+         │            │
+         │            └──▶ <span class="s">chord</span>  组合运行时（传递依赖）
+         │
+  ───────┴──────────────────────────────────
+  <span class="k">pi-ai</span>                   消息列表 → token 流
+  ──────────────────────────────────────────
+    providers · models · streaming · usage
+         │
+  ───────┴──────────────────────────────────
+    <span class="m">模型</span>                  HTTP · 凭据 · 计费
+</pre>
+			</div>
+			<div>
+				<div class="card" style="margin-bottom:20px">
+					<span class="micro-cap">为什么换到 pi-durable</span>
+					<p>
+						ADR-0017。原来打算自建的那一层 —— Storage 接缝、不可变条目、每次转换后完备的操作状态、
+						<code>resume()</code> —— 已经作为 <code>@earendil-works/pi-durable</code> 发布了。
+						ADR-0009 的回看条件写着"有已发布的东西提供同一套底层时重新评估"，
+						而它自己定的检查方法是<strong>看已安装的包导出了什么，不是看 checkout 里有什么</strong>。
+					</p>
+					<p class="caption" style="margin-bottom:0">
+						代价是 <code>chord</code>，1.4MB 的应用组合运行时。它的自述动机场景恰好就是这个项目：
+						“an agent worker, a terminal UI, and a remote WebUI”。
+					</p>
+				</div>
+				<div class="card">
+					<span class="micro-cap">一个查询证明的</span>
+					<p style="margin-bottom:10px">pi-durable <strong>不依赖</strong> pi-agent-core。它是兄弟，不是层：</p>
+					<pre class="block" style="margin-bottom:0">$ npm ls @earendil-works/pi-durable
+  pi-durable → chord, pi-ai
+  (无 pi-agent-core)</pre>
+				</div>
+			</div>
 		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th class="mono">Jev 问题类型</th><th>返回</th><th>关键点</th></tr>
-				</thead>
-				<tbody>
-					<tr><td class="mono">noul</td><td class="mono">{ noul: 0..1 }</td><td><strong>是概率，不是布尔</strong>。阈值是我们的事</td></tr>
-					<tr><td class="mono">choice</td><td class="mono">{ choice, confidence, probabilities }</td><td>带完整概率分布，不只 argmax</td></tr>
-					<tr><td class="mono">score</td><td class="mono">{ score, confidence, ... }</td><td>score 是期望值，可以是小数</td></tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="table-note">
-			不理解散文、只返回类型化决策，并且每次调用都带自己的 <code>usage</code>。
-			第三列是最要命的那条：它把"判官可能错"从一个风险，变成一个<strong>带可测量错误率的阈值</strong>。
-		</p>
+	</div>
+</section>
 
-		<div class="sec-head" style="margin:52px 0 22px">
-			<h2 style="font-size:21px">七条规则，取自一份已出货的实现</h2>
-			<p><code>pi-mcp-adapter</code> 已经在用 Jev 做工具检索。这些不是从第一性原理推的，是从它的代码里读的。</p>
-		</div>
-		<ol class="rules">
-			<li><span><b>代码先收窄，决策模型再选</b><span>它的词法排序先把候选压下来，Jev 只在这几个里选。事实交给代码，判断交给模型。</span></span></li>
-			<li><span><b>永远给逃生口</b><span>它的 choice 条件里一定有 <em>none</em>。强制选择返回的是错误答案，不是"没有答案"。</span></span></li>
-			<li><span><b>读整个分布，不只 argmax</b><span>按 <code>probabilities[id]</code> 排序，让近乎平票变得可见，而不是被一个标签盖住。</span></span></li>
-			<li><span><b>优化 fail-open，安全 fail-closed</b><span>超时/限流时它回落到词法检索；同样的故障落在可逆性判定上，必须拒绝。</span></span></li>
-			<li><span><b>上报降级，不隐瞒</b><span>它返回 <code>{ requested: "semantic", used: "lexical", degraded: true, reason }</code>。降级运行的数字和正常运行不可比。</span></span></li>
-			<li><span><b>把响应当不可信输入校验</b><span>精确键集、概率范围、label 必须来自我们给的 criteria。外部服务的回答是输入。</span></span></li>
-			<li><span><b>每次调用对披露负责</b><span>它带 <code>sources</code>，并拒发未被 operator 允许的 server 数据。外部决策 API 会收到 Agent 上下文。</span></span></li>
-		</ol>
-		<p class="prov">
-			<b>不许问 Jev 的事：</b>
-			破折号有没有 → 正则。测试过没过 → 读退出码。文件在不在 → <code>stat</code>。
-			把可判定的事实送去问模型，是拿方差和延迟换零收益。允许问的问题列得很短，要靠加一行"失败模式 + 测试"才会变长。
-		</p>
-		<p class="prov">
-			<b>关掉不是缺一个分支，是每个决策点都有一条真实路径。</b>
-			<br>需要问人吗 → 就问。工具路由 → 声明 profile 里的全部工具。
-			输出达标了吗 → 模型自己决定停不停。
-			<br><b>可逆性判定不走这条路：</b>只读白名单和不可逆下限是本地的、免费的、永远在的，
-			所以<strong>无人值守的安全性不依赖任何 key</strong>。决策模型只是把白名单盖不到的命令分得更准。
-			<br>另外，选择开启却没有可用 key 时是<strong>加载期报错，不静默回退</strong> ——
-			配置说着一件事、测量量着另一件事，正是这个项目存在的意义所在。
-		</p>
-	</section>
-
-	<section id="stance-3">
-		<div class="sec-head">
-			<span class="chip spec">SPEC 0002 · 已接受 · 未实现</span>
-			<p class="sec-num">03 / STANCE</p>
-			<h2>不可逆是唯一的闸，不做 Plan 模式</h2>
+<!-- ── 安全 ─────────────────────────────────────────────── -->
+<section id="security" class="dark">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">安全</span>
+			<h2 class="d-xl">凭据曾经是读得到的。</h2>
 			<p>
-				Plan 模式要解决的是"别在理解之前乱改东西"，代价是多一层模式、多一次人工确认，
-				而且它要求人在事情发生<strong>之前</strong>选对。没人记得开，Agent 就照样乱改。
+				<code>spawn("/bin/bash", ["-c", cmd])</code> 没有传 <code>env</code>，
+				于是子进程继承了整个进程环境。模型写一条 <code>printenv DEEPSEEK_API_KEY</code>，
+				key 就进了工具结果 —— 而工具结果是一条<strong>已提交的 entry</strong>，
+				会在会话结束前每一轮都重新发给 provider。
 			</p>
-		</div>
-		<div class="grid-2">
-			<div class="cell">
-				<h3>规划已经就是一个 profile</h3>
-				<p>
-					<code>tools: ["read", "bash"]</code>，没有写工具，就是一个 plan 模式 —— 而且是数据，不是代码路径。
-					<code>data</code> profile 已经这么做了，并且有测试卡住它不能写文件。
-					<strong>想要就写个 profile</strong>，这比"不支持"强，因为它是 profile 抽象的推论，不是例外。
+		</header>
+		<div class="grid g2" style="align-items:start">
+			<div>
+				<table>
+					<thead><tr><th>探测命令</th><th style="text-align:right">修复前</th><th style="text-align:right">修复后</th></tr></thead>
+					<tbody>
+						<tr><td><code>printenv DEEPSEEK_API_KEY | wc -c</code></td><td class="n">36 字节</td><td class="n">0</td></tr>
+						<tr><td><code>env | wc -l</code></td><td class="n">49 个</td><td class="n">10 个</td></tr>
+						<tr><td><code>echo $PATH | wc -c</code></td><td class="n">可用</td><td class="n">可用</td></tr>
+					</tbody>
+				</table>
+				<p class="caption" style="margin-top:16px">
+					白名单而不是黑名单。区别不是风格：<strong>黑名单命名的是禁止什么，因此它授予了以后有人往宿主机加的任何东西。</strong>
 				</p>
 			</div>
-			<div class="cell">
-				<h3>真正该设闸的轴是不可逆</h3>
-				<p>
-					工具声明自己是 <code>read</code> / <code>reversible</code> / <code>irreversible</code>，内核只在最后一类设闸。
-					仓库里的 <code>edit</code> 用 <code>git checkout</code> 能撤销；<code>rm -rf</code> 不能。
-					<strong>这是属性，不是模式</strong> —— 模式要求人先选对，属性不用。
+			<div class="card card-featured">
+				<span class="micro-cap">同一个洞，在 pi-durable 自带的那把工具里</span>
+				<p style="margin-bottom:14px">
+					<code>NodeExecutionEnv</code> 接一个 <code>shellEnv</code>，看起来是放白名单的地方。它不是：
+				</p>
+<pre class="block" style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85)">function getShellEnv(baseEnv, extraEnv, inheritEnv = true) {
+  if (!inheritEnv) return { ...extraEnv };
+  return { ...process.env, ...baseEnv, ...extraEnv };
+}</pre>
+				<p class="caption" style="margin-bottom:0">
+					<code>process.env</code> 铺在 <code>shellEnv</code> <em>底下</em>，所以它只是覆盖层。
+					包装成 <code>guardedEnv</code> 的话，<strong>调用方主动要求继承也会被拒</strong> ——
+					这样它自带的工具和以后加的扩展都一起被保护。
 				</p>
 			</div>
 		</div>
-		<p class="prov">
-			<b>bash 是诚实的那一格：</b>
-			它的命令在到达之前不可知，所以声明只是<strong>下限</strong>，不是判决。只读白名单（<code>grep</code>、<code>git status</code>）免费且精确，先跑；
-			其余交给决策模型；两者都判不了，就按<strong>不可逆</strong>处理。
-			授权是<strong>按次</strong>的，从不常驻 —— 无人值守系统里的常驻授权，是比它当初要解决的问题活得更久的一个权限。
-		</p>
-	</section>
+	</div>
+</section>
 
-	<section id="stance-4">
-		<div class="sec-head">
-			<span class="chip building">SPEC 0004 · 进行中 · 3 个任务可跑</span>
-			<p class="sec-num">04 / STANCE</p>
-			<h2>先测量，再优化</h2>
+<!-- ── 契约 ─────────────────────────────────────────────── -->
+<section id="contracts" class="soft">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">契约</span>
+			<h2 class="d-xl">十二份 spec，十七份 ADR。</h2>
 			<p>
-				"省 token 不损失性能"在两个半边都可测之前，不是一句声明。
-				更糟的是，一个缩短 prompt 的改动可能让总成本<strong>上升</strong> ——
-				短而不稳定的前缀会打断 provider 侧的 prompt 缓存，长而稳定的前缀不会。
+				spec 是还没建的东西的契约：问题、不变量、可运行的验收标准、以及<strong>明确写了什么不在范围内</strong>。
+				没有排除项的 spec 会一直膨胀到停摆。
+			</p>
+		</header>
+		<table>
+			<thead><tr><th>#</th><th>标题</th><th>状态</th><th>一句话</th></tr></thead>
+			<tbody>
+				<tr><td class="n">0001</td><td>Non-blocking interaction</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">交互是带 deadline 与默认动作的记录。持久层采用 pi-durable</td></tr>
+				<tr><td class="n">0002</td><td>Reversibility, not modes</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">不可逆是唯一的闸，不做 Plan 模式</td></tr>
+				<tr><td class="n">0003</td><td>An optional decision layer</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">判断交给判断模型，先探测延迟与成本</td></tr>
+				<tr><td class="n">0004</td><td>Measurement and budget</td><td><span class="pill">building</span></td><td class="caption">任务集与谓词已建；probe 模式与真实数字未建</td></tr>
+				<tr><td class="n">0005</td><td>Two launch commands</td><td><span class="pill">shipped</span></td><td class="caption">两个 bin，一个实现</td></tr>
+				<tr><td class="n">0006</td><td>Publish to npm</td><td><span class="pill">shipped</span></td><td class="caption">已发布，可从空目录安装运行</td></tr>
+				<tr><td class="n">0007</td><td>Rendering and sinks</td><td><span class="pill">building</span></td><td class="caption">词汇表与 sink 已建；tier 3 只画不走网线的行</td></tr>
+				<tr><td class="n">0008</td><td>A shell that exists</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">从宿主机找 shell，找不到就 exit 2 拒绝启动</td></tr>
+				<tr><td class="n">0009</td><td>A browser surface</td><td><span class="pill">building</span></td><td class="caption">会话窗格 + 请求窗格，后者在进程内</td></tr>
+				<tr><td class="n">0010</td><td>Memory and the project wiki</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">一个机制两个作用域；每条断言带证据</td></tr>
+				<tr><td class="n">0011</td><td>The security chain</td><td><span class="pill">building</span></td><td class="caption">四环；第一环已完成，其余三环未建</td></tr>
+				<tr><td class="n">0012</td><td>Continuous iteration</td><td><span class="pill pill-quiet">accepted</span></td><td class="caption">记忆由实测结果评分，不由模型的自信</td></tr>
+			</tbody>
+		</table>
+	</div>
+</section>
+
+<!-- ── 快速开始 ─────────────────────────────────────────── -->
+<section id="start">
+	<div class="wrap">
+		<header>
+			<span class="micro-cap">快速开始</span>
+			<h2 class="d-xl">三步。<span class="caption">前两步不需要凭据。</span></h2>
+		</header>
+		<div class="grid g3">
+			<div class="card">
+				<span class="micro-cap">一 · 克隆与检查</span>
+<pre class="block">$ npm install
+$ npm run check
+
+<span class="c"># typecheck · 181 个测试 · 站点零外部请求</span></pre>
+			</div>
+			<div class="card">
+				<span class="micro-cap">二 · 看渲染器，不需要 key</span>
+<pre class="block">$ npm run preview --workspace k9999
+
+<span class="c"># 用脚本 provider 驱动真实的
+# translate-and-sink 管线</span></pre>
+			</div>
+			<div class="card">
+				<span class="micro-cap">三 · 设 key，然后跑</span>
+<pre class="block">$ export DEEPSEEK_API_KEY=sk-...
+$ npm run k9999 -- --tui
+
+<span class="c"># 或者浏览器界面：
+# npm run web -- --writes</span></pre>
+			</div>
+		</div>
+
+		<div class="grid g2" style="margin-top:20px">
+			<div class="card">
+				<span class="micro-cap">安装为包</span>
+<pre class="block" style="margin-bottom:12px">$ npx k9999 --show        <span class="c"># 不装，不克隆</span>
+$ npm install -g k9999    <span class="c"># 两个命令都上 PATH</span></pre>
+				<p class="caption" style="margin-bottom:0">
+					GitHub Packages 上同一份构建叫 <code>@yageabu/k9999</code>，因为那个 registry 要求名字带 owner 作用域。
+					它<strong>即使是公开包也要认证</strong>，所以 npmjs 仍是指令里的路径。
+				</p>
+			</div>
+			<div class="card">
+				<span class="micro-cap">API key 怎么设</span>
+				<table style="font-size:13px">
+					<tr><td>bash / zsh</td><td class="n"><code>export DEEPSEEK_API_KEY=sk-…</code></td></tr>
+					<tr><td>PowerShell</td><td class="n"><code>$env:DEEPSEEK_API_KEY="sk-…"</code></td></tr>
+					<tr><td>cmd.exe</td><td class="n"><code>set DEEPSEEK_API_KEY=sk-…</code></td></tr>
+				</table>
+				<p class="caption" style="margin-top:14px;margin-bottom:0">
+					<code>export</code> 是 bash 内建命令，PowerShell 和 cmd 会拒绝它。
+					<strong>TUI 是长驻进程，行内前缀到不了它</strong> —— 必须先 export。
+					缺 key 时报错在<em>提交 prompt 几秒之后</em>才出现，因为模型只在那一刻才被调用。
+				</p>
+			</div>
+		</div>
+
+		<div class="card" style="margin-top:20px">
+			<span class="micro-cap">Windows</span>
+			<p style="margin-bottom:0">
+				<strong>在 WSL 下运行。</strong>
+				<code>bash</code> 工具无条件 spawn <code>/bin/bash</code>，原生 Windows 上那是 <code>ENOENT</code> ——
+				实测 Windows 10 22H2 / Node 22.22.3。读文件和改文件仍然可用，但 <strong>agent 永远跑不了任何东西</strong>，
+				也就无法验证自己的改动，而这正是这个 harness 存在的理由。
+				Git Bash 救不了：它的 <code>/bin</code> 是 MSYS 挂载，Node 不做那个转换。
 			</p>
 		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th class="mono">指标</th><th>为什么它在表里</th></tr>
-				</thead>
-				<tbody>
-					<tr><td class="mono">inputTokens</td><td>大多数优化瞄准的轴</td></tr>
-					<tr><td class="mono">outputTokens</td><td>输出规则瞄准的轴</td></tr>
-					<tr><td class="mono">deciderTokens</td><td>决策层自己的成本。不记它，"省了 token"永远不可证伪</td></tr>
-					<tr><td class="mono"><strong>turnsToComplete</strong></td><td><strong>"性能不损失"就住在这里</strong>。省了 token 但多花一轮，是净亏</td></tr>
-					<tr><td class="mono">wallMs</td><td>交互通道和无人值守通道对它的估价完全不同</td></tr>
-					<tr><td class="mono">costUSD</td><td>唯一能把上面几项合起来而不掩盖任何取舍的数</td></tr>
-					<tr><td class="mono">degraded</td><td>被测组件当时是否真的在工作。降级运行的数字，和正常运行不可比</td></tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="table-note">
-			<code>degraded</code> 单独占一行。当决策层降级到兜底路径，这次运行量的是兜底路径。
-			把它的成本当成决策层的成本报出去，是一个 eval 最容易骗到自己的方式，
-			而最容易发现它的办法就是记下这个标记，并拒绝跨过它做比较。
-		</p>
-		<p class="prov">
-			<b>成功必须由被测对象之外的东西定义。</b>
-			每个 task 带一个确定性谓词：退出码、文件内容、一个通过的测试。不用模型打分。
-			理由写在 ADR-0007 里：那份研究里，指令集<strong>在自己的 linter 上赢了，在所有读者看得见的指标上全输</strong>。
-			模型评分是同一个陷阱的多步骤版本 —— 评委和被评的对象共享同一个偏见。
-		</p>
+	</div>
+</section>
 
-		<div class="term-wrap" style="margin-top:28px">
-			<div class="term-head">
-				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
-				<span class="path">已实现 · 下面这段是真实输出</span>
-			</div>
-<pre><span class="a">$</span> npm run eval -- --scripted --verify-replay
-  [code] count-errors run 1/1 (scripted)
-  [code] fix-off-by-one run 1/1 (scripted)
-  [code] write-sum-module run 1/1 (scripted)
-
-  3 task(s), 1 config(s), 1 run(s) each
-
-  baseline: code
-  tasks: 3 comparable of 3
-  <span class="a">usage figures: estimated</span>
-
-  config        tasks      in     out  decider    turns     cost  success
-  code            3/3     4957      80        0     3.67   0.0000     100%
-
-  <span class="a">estimated token figures.</span> The scripted provider counts characters, not tokens, and
-  reports every cost as zero. These numbers describe the harness, not a model, and
-  are not comparable to a run against a real provider.
-
-  <span class="g">replay: 3/3 matched on every deterministic metric</span>
-</pre>
-		</div>
-		<p class="prov">
-			<b>注意这页没有单独引用上面任何 token 数字。</b>
-			脚本模式的 usage 是字符数除以四估算的，成本恒为零。
-			它能用来比较 harness 自己的改动，不能用来和真 provider 比。
-			所以报告自己会把来源标出来，并在两种来源混在一起时<strong>拒绝给出差值</strong>。
-			可复现的东西是：3 个任务、3/3 谓词通过、3/3 重放逐项一致 —— 一条命令、零凭据。
-		</p>
-	</section>
-
-	<section id="arch">
-		<div class="sec-head">
-			<span class="chip shipped">已实现 · 有测试</span>
-			<p class="sec-num">05 / ARCHITECTURE</p>
-			<h2>一个函数就是全部组装</h2>
-			<p>没有 DI 容器，没有配置语法，没有隐藏接线。<code>createHarness()</code> 是唯一的组合点。</p>
-		</div>
-		<div class="term-wrap">
-			<div class="term-head">
-				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
-				<span class="path">运行时组装路径</span>
-			</div>
-<pre>
-<span class="c">profiles/code/</span>                    <span class="c">packages/core/</span>              <span class="c">packages/cli/</span>
-
-  profile.json <span class="a">──────┐</span>
-   <span class="m">tools: [read,bash,edit]</span>   <span class="a">┌──▶</span> <span class="g">createHarness()</span> <span class="a">──▶</span> <span class="g">Agent</span> <span class="a">──▶</span> <span class="g">renderer</span>
-   <span class="m">thinkingLevel: medium</span>     <span class="a">│</span>         <span class="a">│</span>              <span class="a">│</span>       <span class="m">text_delta</span>
-  system.md <span class="a">────────┘</span>         <span class="a">│</span>    <span class="a">┌────┴─────┐</span>        <span class="a">│</span>       <span class="m">tool 事件</span>
-   <span class="m">行为准则 + 8 条输出规则</span>      <span class="a">│</span>    <span class="a">▼</span>          <span class="a">▼</span>        <span class="a">│</span>
-                                <span class="a">│</span>  <span class="g">TOOL_FACTORIES</span>  <span class="g">providerFactory</span>
-                                <span class="a">│</span>  <span class="m">read</span>            <span class="m">deepseek</span>
-                                <span class="a">│</span>  <span class="m">bash</span>            <span class="m">(一处 switch)</span>
-                                <span class="a">│</span>  <span class="m">edit</span>
-                                <span class="a">└──</span> <span class="g">buildSystemPrompt()</span>
-                                     <span class="c">1. system.md（作者文本，{{cwd}} 插值）</span>
-                                     <span class="c">2. ## Available tools（自动生成）</span>
-                                     <span class="c">3. ## Skills（自动生成）</span>
-                                     <span class="c">4. Current working directory</span>
-</pre>
-		</div>
-		<div class="grid-3" style="margin-top:28px">
-			<div class="cell">
-				<h3>PROFILE 是唯一机制</h3>
-				<p>Agent 类型的全部差异收敛到一个目录里的两个文件，可在一份 diff 里 review。没有条件分支 prompt，没有散落在 shell history 里的 flag。</p>
-			</div>
-			<div class="cell">
-				<h3>名字 → 实现单点映射</h3>
-				<p>profile 用字符串声明工具。未知名字在加载时报错并列出合法值，而不是静默地少跑几个工具。</p>
-			</div>
-			<div class="cell">
-				<h3>层有方向</h3>
-				<p><code>packages/core</code> 不 import <code>packages/cli</code>。事件的语义归 core，事件长什么样归 CLI。</p>
-			</div>
-		</div>
-		<p class="prov">
-			<b>顺序是契约。</b>
-			作者写的文本在前，自动生成的工具与技能列表在后。前面承载更多权重，也更容易命中 prompt 缓存；
-			会随 profile 变动的生成内容放在后面，不污染稳定的前缀。
-		</p>
-	</section>
-
-	<section id="profiles">
-		<div class="sec-head">
-			<span class="chip shipped">已实现 · 有测试</span>
-			<p class="sec-num">06 / PROFILES</p>
-			<h2>两种 Agent，两个目录</h2>
-			<p><code>k9999 -p data</code> 就是全部调用方式。每个 profile 的 prompt 里都带同一套 8 条输出规则。</p>
-		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th>Profile</th><th>模型</th><th>思考等级</th><th>工具</th><th>设计意图</th></tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td class="mono">code</td>
-						<td class="mono">deepseek-flash</td>
-						<td class="mono">medium</td>
-						<td class="mono">read · bash · edit</td>
-						<td>最小改动 + 必须给出验证命令和实际输出</td>
-					</tr>
-					<tr>
-						<td class="mono">data</td>
-						<td class="mono">deepseek-v4-pro</td>
-						<td class="mono">high</td>
-						<td class="mono">read · bash</td>
-						<td><span class="win">刻意不给 edit</span>：数据 Agent 用 bash 写脚本到文件，改你的仓库是另一个决定。它同时是 SPEC 0002 里"规划就是一个 profile"的现成例证</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="table-note">
-			有测试专门卡住"data profile 不得暴露 edit/write"。约束写进测试，才不会在后续重构里悄悄消失。
-		</p>
-	</section>
-
-	<section id="evidence">
-		<div class="sec-head">
-			<span class="chip shipped">已实现 · 依据来自外部实测</span>
-			<p class="sec-num">07 / OUTPUT RULES</p>
-			<h2>八条规则，推翻了一个直觉</h2>
-			<p>
-				ASD-STE100 是航空文档的受控语言，53 条规则加约 900 词的受控词典。
-				把它当指令注入确实有效，但同一份研究自己的数据说明了更好的做法。
-			</p>
-		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr>
-						<th>条件</th>
-						<th class="num">词数</th>
-						<th class="num">句数</th>
-						<th class="num">破折号</th>
-						<th class="num">粗体</th>
-						<th class="num">标题</th>
-						<th class="num">列表项</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>不加指令</td>
-						<td class="num lose">249</td><td class="num lose">18.9</td><td class="num lose">32</td>
-						<td class="num lose">52</td><td class="num lose">19</td><td class="num lose">35</td>
-					</tr>
-					<tr>
-						<td>完整 STE skill</td>
-						<td class="num">171</td><td class="num">13.4</td><td class="num">17</td>
-						<td class="num">24</td><td class="num">3</td><td class="num">22</td>
-					</tr>
-					<tr>
-						<td><strong>8 行提示</strong></td>
-						<td class="num win">150</td><td class="num win">5.8</td><td class="num win">2</td>
-						<td class="num win">0</td><td class="num win">0</td><td class="num win">0</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="prov">
-			<b>数字来源：</b>
-			上表的原始数据来自 <code>AminBlg/SimpleEnglish</code> 仓库公开的评测，不是本项目测的。作者的结论：
-			skill 只在自己的 linter 上赢，五十多条规则稀释了真正起作用的那五条。
-			完整规则还带一个漏洞 —— STE 豁免代码块和列表项的句长限制，模型于是把所有东西都做成列表项。
-			<br>结论进 <b>ADR-0007</b>：提取规则，不引用标准，不附带词典。自测方法在 <code>docs/writing-rules.md</code>。
-		</p>
-
-		<div class="sec-head" style="margin-top:56px">
-			<h2 style="font-size:21px">八条规则</h2>
-			<p>规则 1–5 来自 STE。规则 6–8 不是 —— 它们管的是"交付形态"，而任何受控语言都对此一言不发，却贡献了大部分压缩量。</p>
-		</div>
-		<ol class="rules">
-			<li><span><b>句长上限</b><span>指令句 20 词，描述句 25 词。回答前数一遍最长的三句，超了就拆开。</span></span></li>
-			<li><span><b>条件在前，动作在后</b><span><em>If the test fails, read the log.</em></span></span></li>
-			<li><span><b>一词一义</b><span>整篇不得为同一个概念轮换同义词。把一件事说三遍是最大的长度浪费。</span></span></li>
-			<li><span><b>禁破折号与分号</b><span>破折号藏起了两个陈述之间的关系。要么点明关系（because / but / for example），要么写成两句。</span></span></li>
-			<li><span><b>删掉不承载事实的词</b><span><em>simply · seamlessly · robust · powerful · leverage · in order to</em>。替换：utilize→use，prior to→before。</span></span></li>
-			<li><span><b>固定的交付形态</b><span>散文。超过三个部分才用标题，且绝不以标题开头，结尾不加总结。</span></span></li>
-			<li><span><b>无开场白、无结束语</b><span>不复述问题，不总结刚说过的话，不问"还需要更多吗"。</span></span></li>
-			<li><span><b>不编造具体信息</b><span>来源没有给数字或原因，就保持概括陈述。</span></span></li>
-		</ol>
-	</section>
-
-	<section id="rejected">
-		<div class="sec-head">
-			<p class="sec-num">08 / REJECTED</p>
-			<h2>否决清单</h2>
-			<p>每条否决都带数字或可测的后果。没有一条理由是"不够优雅"。</p>
-		</div>
-		<div class="grid-3">
-			<div class="cell">
-				<span class="kpi">10<small> ms</small></span>
-				<h3>裸 RUST 二进制</h3>
-				<p>Codex 的原生二进制启动只要 10ms。看起来值得为它换语言。</p>
-			</div>
-			<div class="cell">
-				<span class="kpi">465<small> ms</small></span>
-				<h3>走 NPM 之后</h3>
-				<p>同一个二进制经 npm 的 Node 壳启动要 465ms，比 Pi 的 415ms 还慢。分发路径把内核优势全部吃掉。</p>
-			</div>
-			<div class="cell">
-				<span class="kpi">309<small> MB</small></span>
-				<h3>换来的安装体积</h3>
-				<p>Codex 装 309MB，Pi 装 21MB。所以 Rust 在这里是叶子，不是核心。<b>ADR-0003</b></p>
-			</div>
-		</div>
-		<div class="table-panel table-scroll" style="margin-top:28px">
-			<table>
-				<thead>
-					<tr><th>否决</th><th>理由</th><th class="mono">ADR</th></tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>fork 整个 Pi</td>
-						<td>上游对内核、工具协议、compaction、provider 覆盖的改进会全部错过，而且要维护两棵 Pi。代价是每个应用层功能自己写</td>
-						<td class="mono">0001</td>
-					</tr>
-					<tr>
-						<td>采用 Cordis</td>
-						<td>Cordis 自己很小（9 个文件、106KB、2 个依赖），但它的四项能力里只有两项现在用得上。会在容器纪律上花掉第一个月</td>
-						<td class="mono">0002</td>
-					</tr>
-					<tr>
-						<td>Plan 模式</td>
-						<td>模式要求人在事前选对，而属性不用。规划已经是 profile，设闸应该是可逆性</td>
-						<td class="mono">0010</td>
-					</tr>
-					<tr>
-						<td>用 Jev 判可判定的事实</td>
-						<td>破折号是正则，测试结果是退出码。送模型去判，是拿方差和延迟换零收益</td>
-						<td class="mono">0011</td>
-					</tr>
-					<tr>
-						<td>模型评分的 eval</td>
-						<td>评委和被评对象共享偏见。ADR-0007 就是这件事的实测版本：在自己的 linter 上赢，在读者看得见的地方全输</td>
-						<td class="mono">0012</td>
-					</tr>
-					<tr>
-						<td>现在支持 MCP</td>
-						<td>推迟。当前路径是把 MCP 工具写成普通 tool 模块，不为它先建沙箱和发现层</td>
-						<td class="mono">0008</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-	</section>
-
-	<section id="specs">
-		<div class="sec-head">
-			<p class="sec-num">09 / SPECS</p>
-			<h2>四份契约</h2>
-			<p>
-				一份 spec 是给还没建的东西立的契约：问题、不变量、接口、<strong>可运行的验收标准</strong>、以及明确的不做什么。
-				决策记录写的是"已经决定了什么"，spec 写的是"建完必须为真"。
-			</p>
-		</div>
-		<div class="table-panel table-scroll">
-			<table>
-				<thead>
-					<tr><th class="mono">#</th><th>Spec</th><th class="mono">状态</th><th>依赖</th><th>第一步</th></tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td class="mono">0001</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0001-non-blocking-interaction.md">不阻塞的交互</a></td>
-						<td><span class="chip spec">accepted</span></td>
-						<td class="mono">—</td>
-						<td>交互成为带 deadline 与默认动作的持久记录；持久化底层**自建，不引入** —— 详见 spec 里的更正</td>
-					</tr>
-					<tr>
-						<td class="mono">0002</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0002-reversibility-not-modes.md">可逆性，不是模式</a></td>
-						<td><span class="chip spec">accepted</span></td>
-						<td class="mono">0001</td>
-						<td>工具注册表加 <code>reversibility</code> 字段</td>
-					</tr>
-					<tr>
-						<td class="mono">0003</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0003-optional-decision-layer.md">可选的决策层</a></td>
-						<td><span class="chip spec">accepted</span></td>
-						<td class="mono">0004</td>
-						<td>先探测延迟与成本，再接进任何路径</td>
-					</tr>
-					<tr>
-						<td class="mono">0004</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0004-measurement-and-budget.md">测量与预算</a></td>
-						<td><span class="chip building">building</span></td>
-						<td class="mono">—</td>
-						<td><code>packages/eval</code> 骨架与 replay 已完成；probe 模式未开始</td>
-					</tr>
-					<tr>
-						<td class="mono">0005</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0005-two-launch-commands.md">两个启动命令</a></td>
-						<td><span class="chip shipped">shipped</span></td>
-						<td class="mono">—</td>
-						<td>第二个 bin 指向同一个入口，<code>kula</code> 默认 <code>data</code></td>
-					</tr>
-					<tr>
-						<td class="mono">0006</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0006-publish-to-npm.md">发布到 npm</a></td>
-						<td><span class="chip shipped">shipped</span></td>
-						<td class="mono">0005</td>
-						<td><code>k9999</code> 已上架，在空目录里装完就能跑。当前版本以 <code>npm view k9999 version</code> 为准，这一页不背这个数字</td>
-					</tr>
-					<tr>
-						<td class="mono">0007</td>
-						<td><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/specs/0007-rendering-and-sinks.md">渲染与汇点</a></td>
-						<td><span class="chip building">building</span></td>
-						<td class="mono">—</td>
-						<td>第一、二档已完成：词汇表 + 着色 + diff，以及转录 TUI（启动块、ctrl+o 帮助、两行 footer）。第三档是全屏仪表盘，未开始</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-		<p class="table-note">
-			建造顺序由依赖决定，不由优先级决定。0004 先做，理由只有一个：
-			<strong>没有它，其他三项的收益都无法被判断。</strong>
-		</p>
-	</section>
-
-	<section id="status">
-		<div class="sec-head">
-			<p class="sec-num">10 / STATUS</p>
-			<h2>已经能跑的，和还不存在的</h2>
-			<p>缺口写在文档里，不藏在路线图里。每一条都指向它自己的 ADR 或 spec。</p>
-		</div>
-		<div class="gaps">
-			<div class="gap-row">
-				<span class="tag done">已交付 · 有测试</span>
-				<p>Profile 加载与校验 · prompt 组装（顺序有测试锁定）· 工具注册表（read / bash / edit）· 技能解析与渲染 · provider 注册 · CLI（print / show / list / REPL）· <b>两个启动命令 k9999 与 kula</b> · <b>渲染词汇表与汇点、着色、diff、每轮消耗行</b> · <b>转录 TUI：启动块与 ANSI Shadow 方块字、ctrl+o 展开帮助与已加载资源、两行 footer</b> · 8 条输出规则写进两个 profile · <b>npm 包 k9999</b></p>
-			</div>
-			<div class="gap-row">
-				<span class="tag done">进行中 · SPEC 0004</span>
-				<p><b>测量工具</b> —— 3 个任务、确定性谓词、JSONL 轨迹、无网络重放、预算闸、报告在降级或来源不一致时拒绝给差值。缺：<code>probe</code> 模式，以及接真 provider 跑出非估算的数字</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag open">未实现 · 0 行代码</span>
-				<p><b>不阻塞的交互</b>（0001）· <b>可逆性设闸</b>（0002）· <b>可选决策层</b>（0003）—— 三份 spec 都是 <code>accepted</code>，都还没开始。这一页不给它们任何数字。</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag">DEFERRED</span>
-				<p><b>MCP</b> —— 当前路径是把 MCP 工具写成普通 tool 模块注册进 <code>TOOL_FACTORIES</code>，不为它先建沙箱和发现层。<b>ADR-0008</b></p>
-			</div>
-			<div class="gap-row">
-				<span class="tag">半成品</span>
-				<p><b>技能调用</b> —— 声明的技能会解析、校验、渲染进系统提示，但读取靠 Agent 自己调 <code>read</code>，尚无技能调用工具。</p>
-			</div>
-			<div class="gap-row">
-				<span class="tag">有意为之</span>
-				<p><b>没有扩展生态</b> —— 没有可借用的 <code>ExtensionAPI</code>。Pi 扩展不等于 K9999 扩展，这是自己拥有上层的代价。<b>ADR-0001</b></p>
-			</div>
-		</div>
-	</section>
-
-	<section id="start">
-		<div class="sec-head">
-			<p class="sec-num">11 / START</p>
-			<h2>三步跑起来</h2>
-			<p>装好、确认、配 key。前两步不需要凭据，也不连网。</p>
-		</div>
-		<ol class="rules">
-			<li><span><b>安装</b><span>一条命令装到全局，<code>k9999</code> 和 <code>kula</code> 都上 PATH。不想装就用 <code>npx k9999</code> 直接跑。</span></span></li>
-			<li><span><b>运行</b><span>零凭据就能确认装好了：<code>k9999 --list</code> 列出 profile，<code>k9999 --show</code> 打印解析后的配置。两步都不连网。</span></span></li>
-			<li><span><b>配置 API key</b><span>默认 provider 只认 <code>DEEPSEEK_API_KEY</code>。在 shell 里 <code>export DEEPSEEK_API_KEY=sk-...</code>，把 <code>sk-...</code> 换成你自己的 key。没配它时，需要模型的运行退出码为 1，只打印 <code>Provider is not configured: deepseek</code>，不静默回退。</span></span></li>
-		</ol>
-		<p class="table-note">
-			配好 key 后 <code>k9999 --print "列出 src 下的所有 .ts 文件"</code> 跑一次就退出，不带参数进入交互。数据 Agent 换成 <code>kula</code>，用同一个 key。
-		</p>
-		<p class="prov">
-			<b>这一页不放 key。</b>
-			配置步骤里的 <code>sk-...</code> 是占位符。真实的 key 由你自己的 shell 提供，仓库、这个页面、以及发布到 npm 的包里都不包含它。
-		</p>
-		<div class="sec-head" style="margin:52px 0 22px">
-			<h2 style="font-size:21px">零凭据验证</h2>
-			<p>测试和测量工具用脚本化 provider 驱动，整条链路 —— 模型请求、工具执行、二次请求、回合结束 —— 都不需要网络。</p>
-		</div>
-		<div class="term-wrap">
-			<div class="term-head">
-				<span class="dot on"></span><span class="dot"></span><span class="dot"></span>
-				<span class="path">bash</span>
-			</div>
-<pre><span class="c"># 已发布到 npm，不需要克隆仓库：npx k9999</span>
-<span class="a">$</span> npx k9999 --show
-  profile               code
-  tools                 read, bash, edit
-  profiles dir          .../node_modules/k9999/dist/profiles
-
-<span class="c"># 数据 Agent 是另一个命令，不是另一个 flag</span>
-<span class="a">$</span> npx kula --show
-  profile               data
-  model                 deepseek/deepseek-v4-pro
-  thinking              high
-  tools                 read, bash                    <span class="c"># 没有 edit</span>
-
-<span class="c"># 装到全局之后，两个命令都在 PATH 上</span>
-<span class="a">$</span> k9999 --list
-  code         Code Agent             (k9999)
-  data         Data Analysis Agent    (kula)
-
-<span class="c"># 单次运行，或进入交互；数据 Agent 换成 kula</span>
-<span class="a">$</span> DEEPSEEK_API_KEY=... k9999 --print "prompt.ts 的组装顺序是什么？"
-<span class="a">$</span> kula
-
-<span class="c"># 失败是响亮的，不是静默的</span>
-<span class="a">$</span> k9999 --print "hi"
-  <span class="r">Provider is not configured: deepseek</span>
-  <span class="m">exit 1</span>
-
-<span class="c"># 从源码（维护者）：typecheck + 135 个测试 + 站点检查，不需要 API key</span>
-<span class="a">$</span> npm install
-<span class="a">$</span> npm run check
-  <span class="g"># tests 135</span>
-  <span class="g"># pass 135</span>
-  <span class="g"># fail 0</span>
-  <span class="g">3 file(s) under site load nothing external; 9 outbound hyperlink(s) allowed</span>
-
-<span class="c"># 看渲染效果，不需要凭据（脚本化 provider）</span>
-<span class="a">$</span> npm run preview --workspace k9999
-  I will read the file before changing anything.
-  <span class="g">→</span> <b>read</b>  counter.mjs
-    <span class="g">✓</span> counter.mjs  7 lines
-  <span class="m">  · turn 1 · 1.2k in · 19 out · 1 tool</span>
-  <span class="g">→</span> <b>edit</b>  counter.mjs
-    <span class="g">✓</span> counter.mjs  +1 -1
-    <span class="m">│ counter.mjs:3</span>
-    <span class="r">│ - i &lt; n</span>
-    <span class="g">│ + i &lt;= n</span>
-
-<span class="c"># 测量工具：3 个任务、重放校验，同样零凭据</span>
-<span class="a">$</span> npm run eval -- --scripted --verify-replay
-
-<span class="c"># 构建发布产物：单包双 bin，profile 随包走</span>
-<span class="a">$</span> npm run build --workspace k9999
-  dist/index.js    70.0 KB
-  profiles         code, data
-</pre>
-		</div>
-	</section>
-
-	<section id="changelog">
-		<div class="sec-head">
-			<p class="sec-num">12 / CHANGELOG</p>
-			<h2>每次发布改了什么</h2>
-			<p>这里只列最近三个版本，完整记录在 <a href="https://github.com/yageabu/k9999-agent-harness/blob/main/packages/cli/CHANGELOG.md">CHANGELOG.md</a>，和包一起发布。npm 上真正存在哪个版本，以 <code>npm view k9999 version</code> 为准，不以上面这一页为准。</p>
-		</div>
-		<ol class="rules">
-			<li><span><b>0.6.0 · TUI 向 Pi 看齐</b><span>顶部三行状态栏撤掉，换成启动块加两行 footer。启动块里是 ANSI Shadow 方块字写的 k9999 或 kula、一行快捷键提示、以及 <code>[Profile]</code> / <code>[Tools]</code> / <code>[Skills]</code> 三段已加载资源，<code>ctrl+o</code> 展开全部。终端太窄或太矮时自动退回单行名字。同时补上 <code>escape</code> 中断当前回合、<code>ctrl+c</code> 清空（连按两次退出）、<code>ctrl+d</code> 空提示时退出。提示文字和实际处理读同一份常量，所以帮助里不会出现没实现的键。</span></span></li>
-			<li><span><b>0.5.0 · 状态栏与启动 banner</b><span>模型、provider、思考等级一行，一条分隔线，下面一行实时数字。上下文读的是<strong>剩余</strong>额度；provider 不报 cache read 时缓存占比不显示，而不是显示 0，因为 0 会被读成“没有命中缓存”；成本花掉之后才出现。</span></span></li>
-			<li><span><b>0.4.1 · Ctrl+C 不再打堆栈</b><span>原来在提示符按 Ctrl+C 会打印 <code>fatal: AbortError</code> 加六行堆栈，因为中断以 rejected promise 的形式撞进了处理缺陷的分支。现在空闲时按直接退出，回合中按则停下回到提示符，两者都不算错误，退出码也不再非零。</span></span></li>
-		</ol>
-		<p class="table-note">
-			<a href="https://github.com/yageabu/k9999-agent-harness/releases">全部发布历史</a>
-		</p>
-	</section>
-
-	<section id="support">
-		<div class="sec-head">
-			<p class="sec-num">13 / SUPPORT</p>
-			<h2>这个项目最缺的是 token 额度</h2>
-			<p>测量工具已经建好，但还没有被规模验证过。它今天能报告的所有数字都来自脚本化 provider。</p>
-		</div>
-		<p>
-			一次真实运行要花钱，而这个项目没有预算。<code>probe</code> 模式和固定任务集上的前后对比因此都停在原地，这一页也不给它们任何数字。
-		</p>
-		<p>
-			<strong>如果你在模型厂商工作，能提供 API 额度，这是对项目最有用的支持。</strong>
-			任何支持 tool calling 的 provider 都有用。harness 与 provider 无关：<code>packages/core/src/model.ts</code> 里的 <code>providerFactory()</code> 是唯一的开关。
-		</p>
-		<p class="prov">
-			来信请说明模型、额度规模，以及你希望被测的是什么：<a href="mailto:yageabu@163.com">yageabu@163.com</a>
-		</p>
-	</section>
-
-</div>
+<hr class="rule">
 
 <footer>
 	<div class="wrap">
-		<img class="logo" src="logo.svg" alt="" width="34" height="34">
-		<span class="mono">K9999 Agent Harness</span>
-		<span>MIT License</span>
-		<span>TypeScript · Node ≥ 22.19 · 3 packages · 3 tools · 135 tests · 7 specs</span>
-		<span class="mono">never blocks · measures first</span>
+		<div class="cols">
+			<div>
+				<h4>项目</h4>
+				<ul>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness">源码</a></li>
+					<li><a href="https://www.npmjs.com/package/k9999">npm</a></li>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/README.md">README</a></li>
+				</ul>
+			</div>
+			<div>
+				<h4>文档</h4>
+				<ul>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/positioning.md">定位</a></li>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/architecture.md">架构</a></li>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/tree/main/docs/specs">契约</a></li>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/docs/decisions.md">决策记录</a></li>
+				</ul>
+			</div>
+			<div>
+				<h4>建在</h4>
+				<ul>
+					<li><a href="https://github.com/earendil-works/pi">Pi</a></li>
+					<li>pi-durable</li>
+					<li>pi-ai</li>
+					<li>pi-tui</li>
+				</ul>
+			</div>
+			<div>
+				<h4>授权</h4>
+				<ul>
+					<li>MIT</li>
+					<li><a href="https://github.com/yageabu/k9999-agent-harness/blob/main/LICENSE">LICENSE</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="legal">
+			<span>本页零外部请求。字体是系统栈，因为 CDN 字体会让 CI 失败。</span>
+			<span>·</span>
+			<span>颜色与排版取自 <code>npx getdesign add stripe</code>。</span>
+		</div>
 	</div>
 </footer>
 
