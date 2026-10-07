@@ -34,7 +34,10 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
 | 0006 | [Publish to npm](0006-publish-to-npm.md) | `shipped` | 0005 | Done: `k9999@0.1.0` is live and installs into an empty directory |
 | 0007 | [Rendering and sinks](0007-rendering-and-sinks.md) | `building` | — | Done: vocabulary, sink seam, text sink with diffs, and the transcript TUI with Pi-shaped chrome. Tier 3 is re-scoped to draw only the four rows that do not cross the wire — see ADR-0015 |
 | 0008 | [A shell that exists](0008-shell-portability.md) | `accepted` | — | Resolve the shell at startup from the host, and refuse the session with exit 2 when there is none |
-| 0009 | [A browser surface](0009-web-interface.md) | `accepted` | 0007, pi-durable | A server that carries `watch()` to a browser and submits back. Tier A is read-only; Tier B adds writes behind a token |
+| 0009 | [A browser surface](0009-web-interface.md) | `building` | 0007, pi-durable | A server that carries `watch()` to a browser and submits back. Tier A reads, Tier B writes behind a token |
+| 0010 | [Memory and the project wiki](0010-memory-and-wiki.md) | `accepted` | pi-durable | Two scopes over one document mechanism; recall is capped and ranked; every project claim carries evidence |
+| 0011 | [The security chain](0011-security-chain.md) | `accepted` | 0001 | Four links with a test each. Credential isolation first — `printenv DEEPSEEK_API_KEY` works today |
+| 0012 | [Continuous iteration](0012-continuous-iteration.md) | `accepted` | 0010, 0004 | Memory is scored by measured outcomes, not by the model's confidence in the telling |
 
 ## Build order
 
@@ -59,8 +62,20 @@ Implementation lives in `packages/`. A spec's status moves to `building` as soon
  │
  ├──▶ 0008  shell resolution   ── accepted: the harness finds a shell, or refuses to start
  │
- └──▶ 0009  browser surface    ── accepted: tier A reads, tier B writes
+ ├──▶ 0009  browser surface    ── building: tier A reads, tier B writes
+ │
+ └──▶ 0010  memory + wiki      ── accepted: one mechanism, two scopes
+      │
+      ├──▶ 0011  security chain     ── accepted: four links, one of them a confirmed hole
+      │
+      └──▶ 0012  iteration          ── accepted: needs 0004 to be iteration rather than accumulation
 ```
+
+0011 and 0012 are independent of each other and both wait on something real.
+0011's permission gate is an interaction, so it waits on 0001's record; 0012
+scores memory by measured outcomes, so without 0004's task set and replay it
+measures nothing. That ordering is not a preference — 0012 with no judge is a
+store that grows, which is the failure it exists to prevent.
 
 0009 is the first spec whose substrate is adopted rather than written: `pi-durable` supplies the view, the operations between views, submissions, and resume, and the spec is the server and the page that carry them. It depends on 0007 for the vocabulary a surface speaks and on `pi-durable` for the state a surface reads.
 
