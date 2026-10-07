@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import type { Conversation, Harness } from "@earendil-works/pi-durable";
 import { createWebServer, PAGE, type WebServer } from "../src/index.ts";
+import { createWireRecorder } from "../src/wire.ts";
 
 /**
  * SPEC 0009's acceptance criteria, run against a stub conversation.
@@ -64,6 +65,7 @@ async function start(options: { allowWrites?: boolean; token?: string } = {}): P
 		conversation,
 		token,
 		allowWrites: options.allowWrites ?? false,
+		wire: createWireRecorder(),
 	});
 	running.push(server);
 	return { server, recorded, token };
@@ -159,10 +161,25 @@ describe("the browser surface", () => {
 		const { value } = await reader.read();
 		const text = new TextDecoder().decode(value);
 		assert.match(text, /^data: /);
-		const frame = JSON.parse(text.slice("data: ".length).trim()) as { type: string; value: { entries: unknown[] } };
-		assert.equal(frame.type, "snapshot");
-		assert.ok(Array.isArray(frame.value.entries));
+		const frame = JSON.parse(text.slice("data: ".length).trim()) as { view: { entries: unknown[] } };
+		assert.ok(Array.isArray(frame.view.entries));
 		await reader.cancel();
+	});
+
+	it("labels every number with the source it came from, so two sources are never merged", () => {
+		// `pi.usage` is a committed total and counts failed and aborted attempts;
+		// `afterResponse.usage` is one request. They differ legitimately, and a page
+		// that showed both as "tokens" would be lying about one of them.
+		assert.match(PAGE, /pi\.usage · committed total/);
+		assert.match(PAGE, /this request/);
+		assert.doesNotMatch(PAGE, /committed total[^"]*this request/);
+	});
+
+	it("states the boundary of the request pane rather than implying it sees the wire", () => {
+		assert.match(PAGE, /wire-boundary/);
+		const boundary = createWireRecorder().snapshot().boundary;
+		assert.match(boundary, /Not the bytes on the wire/);
+		assert.match(boundary, /not durable/);
 	});
 
 	it("ships a page that makes no external request", () => {

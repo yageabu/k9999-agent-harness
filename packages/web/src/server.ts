@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { Conversation, Harness } from "@earendil-works/pi-durable";
 import { PAGE } from "./page.ts";
+import type { WireRecorder } from "./wire.ts";
 
 /**
  * The browser surface (SPEC 0009).
@@ -26,6 +27,11 @@ export interface WebServerOptions {
 	/** Serving prompts is opt-in, so the dangerous mode must be asked for. */
 	allowWrites?: boolean;
 	port?: number;
+	/**
+	 * The in-process request inspector. Present means the page draws a second pane;
+	 * absent means it does not, so a server can be run without one.
+	 */
+	wire?: WireRecorder;
 }
 
 export interface WebServer {
@@ -86,12 +92,13 @@ async function readBody(request: IncomingMessage): Promise<Record<string, unknow
 export async function createWebServer(options: WebServerOptions): Promise<WebServer> {
 	const { harness, conversation, token } = options;
 	const allowWrites = options.allowWrites ?? false;
+	const wire = options.wire;
 	const server: Server = createServer();
 
 	const state = async (): Promise<string> => {
 		const view = await conversation.viewState(BACKGROUND_CONTEXT);
 		try {
-			return JSON.stringify(view.value);
+			return JSON.stringify({ view: view.value, wire: wire?.snapshot() });
 		} finally {
 			view.dispose();
 		}
@@ -140,7 +147,11 @@ export async function createWebServer(options: WebServerOptions): Promise<WebSer
 
 			// The state at attachment, which is what a late or reconnecting client
 			// needs. Nothing is replayed, because pi-durable does not replay.
-			frame({ type: "snapshot", value: JSON.parse(await state()) });
+			//
+			// The wire snapshot rides each frame rather than having its own stream: it
+			// changes on the same events the view does, and a second connection would
+			// be a second thing to reconnect.
+			frame(JSON.parse(await state()));
 
 			const watch = await conversation.watch(BACKGROUND_CONTEXT);
 			// A whole view per commit rather than the operations between them. The view is
@@ -150,7 +161,7 @@ export async function createWebServer(options: WebServerOptions): Promise<WebSer
 			// format to the browser, which is a second implementation of the thing that has
 			// one, and SPEC 0009 rules that out.
 			watch.start(async (value) => {
-				frame({ type: "snapshot", value });
+				frame({ view: value, wire: wire?.snapshot() });
 			});
 
 			request.on("close", () => {

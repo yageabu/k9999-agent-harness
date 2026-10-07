@@ -71,7 +71,22 @@ What the page draws, and the rule for each row:
 | Model, thinking level, tools, cwd | `docs["pi.agent"]` | Resolved from a registry the request cannot see |
 | Busy or idle, and the pending count | derived | The answer to "is it stuck?" |
 
-**ADR-0015's division holds, and it is the reason this table is short.** The system prompt as sent, the tool schemas, the request bodies, and a turn-to-turn diff of them are [ccglass](../decisions.md)'s job, because a proxy sees what went out and the harness can only see what it meant to send. The page must not grow a request inspector.
+**ADR-0015's division holds; this paragraph used to overstate it.** It said the page must not grow a request inspector, because a proxy sees what went out and the harness can only see what it meant to send. The distinction is real and the conclusion was too strong, for two reasons that only became visible once the page existed.
+
+ccglass is a separate tool with a separate page. The case ADR-0015 considered was "do not rebuild what it does"; the case that arrived is "one page that both drives and inspects". When you have just run a turn from this page, *what did it send* is a question about **that action**, and switching to another tool to answer it is friction that means nobody answers it.
+
+And the cost is not what it looked like. Being the client means the `GenerationTask` hooks hand over the request and the response with no proxy, no certificate, and no configurable endpoint — so this is a hook and a bounded buffer, not a second implementation.
+
+**Tier C — the request pane.** A `hook(GenerationTask, { beforeRequest, afterResponse })` records each request: the messages and their sizes, **the tool schemas offered** (they ride on the system message as `toolsAdded` — measured, not assumed), and the response's usage. The page draws it in a second pane beside the session.
+
+Two rules make it an inspection rather than a second opinion:
+
+1. **Every number is labelled with its source and the two are never merged.** `pi.usage` is a committed total and counts failed and aborted attempts; `afterResponse.usage` is one request. They differ legitimately, and a pane that showed both as "tokens" would be lying about one of them. Measured live: the two per-request cache reads were 640 and 768 against a committed total of 1408 — the labelling is what makes that agreement visible instead of confusing.
+2. **The pane states its boundary.** It says it is what this process intended to send, not the bytes on the wire, and that it is memory rather than a document. A view that cannot show a serialization bug must not look like one that can.
+
+**It is not durable, and that is a decision rather than a limitation.** `HookApi` extends `DocumentReader` and a hook has no commit. Committing every request body would put large blobs in the session store and create a second durable source of truth for numbers `pi.usage` already holds. The pane says it is lost on restart.
+
+What remains [ccglass](../decisions.md)'s job is the byte-level view a proxy gives and no in-process hook can: headers, redirects, raw bodies, and the same observation applied to a client that is not this one.
 
 ## Tier B — writes
 
@@ -110,6 +125,10 @@ The rules, all of them enforceable in tests:
 8. A test asserts a client that connects mid-run receives the current view and not a replay, by counting frames against a run whose earlier commits are already stored.
 9. A test asserts the page makes no external request: no CDN, no font, no framework. Checked the same way `scripts/check-site.mjs` checks `site/`, because "no external requests" is already a rule here and the reason does not change with the artifact.
 10. A test asserts closing the SSE connection does not call `abort()`, by asserting a run continues to completion after every client disconnects.
+11. A test asserts the tool schemas of a request are recorded, by running a turn with a scripted provider and asserting the recorded names match the tools the agent was offered.
+12. A test asserts a retry produces a second record rather than overwriting the first, so an attempt count is visible.
+13. A test asserts the request records are bounded, so an inspector left open for a long session cannot grow without limit.
+14. A test asserts the page labels a committed total and a per-request figure differently, and that neither is rendered without its source.
 
 ## Out of scope
 

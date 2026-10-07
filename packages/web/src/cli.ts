@@ -7,6 +7,7 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { createWebServer } from "./server.ts";
+import { createWireRecorder } from "./wire.ts";
 
 /**
  * Start the browser surface.
@@ -88,6 +89,12 @@ async function main(): Promise<void> {
 
 	const registry = createRegistry();
 	registry.install(CodingTools);
+	// The request inspector (SPEC 0009). In process, so it needs no proxy: the
+	// generation hooks hand over what ccglass would have to intercept. It is
+	// memory, not a document — a request inspector is a live debugging view, and
+	// committing every request body would put large blobs in the session store.
+	const wire = createWireRecorder();
+	registry.install(wire.extension);
 
 	const storage = await openNodeSqliteStorage(options.storage);
 	const harness = await Harness.open(
@@ -109,7 +116,14 @@ async function main(): Promise<void> {
 	harness.resume();
 
 	const token = randomBytes(24).toString("base64url");
-	const server = await createWebServer({ harness, conversation, token, allowWrites: options.writes, port: options.port });
+	const server = await createWebServer({
+		harness,
+		conversation,
+		token,
+		allowWrites: options.writes,
+		port: options.port,
+		wire,
+	});
 
 	process.stdout.write(`\n  K9999 web\n\n    ${server.url}\n\n`);
 	process.stdout.write(`    ${options.writes ? "reads and writes" : "read-only"} · ${options.model} · ${options.cwd}\n`);
