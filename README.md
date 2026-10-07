@@ -202,6 +202,7 @@ Every step is one function in `packages/core/src`. There is no hidden wiring, an
 
 ## Documentation
 
+- [`docs/architecture.md`](docs/architecture.md) — what the pieces are, what each owns, and where the seams are. Start here if the stack is unclear, or if you have found two harness layers and want to know why
 - [`docs/specs/`](docs/specs/README.md) — the contracts for what is not built yet. Start here for direction: nine specs, two shipped and two building.
 - [`docs/decisions.md`](docs/decisions.md) — seventeen decision records: why this shape and not the alternatives, each with its cost and a revisit trigger
 - [`docs/writing-rules.md`](docs/writing-rules.md) — the eight output rules, with the measurement behind them
