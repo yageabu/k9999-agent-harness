@@ -27,15 +27,22 @@ export const PAGE = `<!doctype html>
 <style>
   :root { --bg:#12100e; --fg:#e8e2d8; --dim:#8a8076; --line:#2e2a26; --amber:#e07856; --ok:#7ea86b; --bad:#c25b4e; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
-  header { position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--line); padding:9px 14px; display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; }
+  body { margin:0; height:100vh; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); color:var(--fg); font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  header { flex:none; background:var(--bg); border-bottom:1px solid var(--line); padding:9px 14px; display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; }
   header .k { color:var(--amber); font-weight:700; letter-spacing:.5px; }
   header .dim, .dim { color:var(--dim); }
-  .panes { display:grid; grid-template-columns:1fr 1fr; gap:0; }
-  @media (max-width:900px) { .panes { grid-template-columns:1fr; } }
-  .pane { padding:14px; min-width:0; }
-  .pane + .pane { border-left:1px solid var(--line); }
-  @media (max-width:900px) { .pane + .pane { border-left:0; border-top:1px solid var(--line); } }
+  /* Tabs. One pane at a time, each owning the full height and its own scroll.
+     The two panes are different lengths, so side by side they shared one scroll
+     bar and reading either one meant dragging the other. */
+  .tabs { flex:none; display:flex; gap:2px; padding:0 14px; border-bottom:1px solid var(--line); }
+  .tab { appearance:none; background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); font:inherit; padding:9px 12px 8px; cursor:pointer; margin-bottom:-1px; }
+  .tab:hover { color:var(--fg); }
+  .tab.active { color:var(--fg); border-bottom-color:var(--amber); }
+  .tab .count { color:var(--dim); font-size:11px; }
+  .tab.active .count { color:var(--amber); }
+  .panes { flex:1; min-height:0; position:relative; }
+  .pane { position:absolute; inset:0; overflow-y:auto; padding:14px 16px 24px; display:none; }
+  .pane.active { display:block; }
   .pane h2 { font-size:11px; text-transform:uppercase; letter-spacing:.7px; color:var(--dim); margin:0 0 3px; font-weight:400; }
   .pane .sub { font-size:11px; color:var(--dim); margin:0 0 10px; }
   .entry { border-left:2px solid var(--line); margin:0 0 11px; padding:2px 0 2px 10px; white-space:pre-wrap; word-break:break-word; }
@@ -53,7 +60,7 @@ export const PAGE = `<!doctype html>
   .req { border:1px solid var(--line); padding:8px 10px; margin:0 0 10px; }
   .req.newest { border-color:var(--amber); }
   .schema { max-height:200px; overflow:auto; background:#1b1815; padding:6px 8px; margin:4px 0 0; font-size:11px; color:var(--dim); }
-  form { position:sticky; bottom:0; background:var(--bg); border-top:1px solid var(--line); padding:9px 14px; display:flex; gap:8px; }
+  form { flex:none; background:var(--bg); border-top:1px solid var(--line); padding:9px 14px; display:flex; gap:8px; }
   input[type=text] { flex:1; background:#1b1815; border:1px solid var(--line); color:var(--fg); padding:7px 9px; font:inherit; }
   input[type=text]:focus { outline:1px solid var(--amber); }
   button { background:#1b1815; border:1px solid var(--line); color:var(--fg); padding:7px 12px; font:inherit; cursor:pointer; }
@@ -69,15 +76,20 @@ export const PAGE = `<!doctype html>
   <span id="err"></span>
 </header>
 
+<nav class="tabs">
+  <button class="tab active" data-tab="session" type="button">会话 <span class="count" id="c-session"></span></button>
+  <button class="tab" data-tab="monitor" type="button">监控 <span class="count" id="c-monitor"></span></button>
+</nav>
+
 <div class="panes">
-  <section class="pane">
+  <section class="pane active" data-pane="session">
     <h2>The session</h2>
     <p class="sub">Committed state. Persisted, so it survives a restart.</p>
     <div id="transcript"></div>
     <div id="session-metrics" style="margin-top:14px"></div>
   </section>
 
-  <section class="pane">
+  <section class="pane" data-pane="monitor">
     <h2>The request</h2>
     <p class="sub" id="wire-boundary">—</p>
     <div id="wire"></div>
@@ -167,7 +179,11 @@ function renderSession() {
   el("status").textContent = (running ? "running" : "idle") + (queued ? " · " + queued + " queued" : "");
 
   const transcript = el("transcript");
-  const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 80;
+  // The pane scrolls, not the window. Reading the window here would always say
+  // "at the bottom" because the window never scrolls under this layout, and every
+  // frame would yank the view down while someone was reading the top.
+  const pane = transcript.parentElement;
+  const atBottom = pane === null ? true : pane.scrollHeight - pane.scrollTop - pane.clientHeight < 80;
   transcript.textContent = "";
   for (const entry of view.entries || []) transcript.appendChild(renderEntry(entry));
 
@@ -189,7 +205,7 @@ function renderSession() {
   m.appendChild(metric("cache read", totals.cacheRead, "pi.usage · committed total"));
   m.appendChild(metric("cost", "$" + totals.cost.toFixed(6), "pi.usage · committed total"));
 
-  if (atBottom) window.scrollTo(0, document.body.scrollHeight);
+  if (atBottom && pane !== null) pane.scrollTop = pane.scrollHeight;
 }
 
 function renderWire() {
@@ -270,6 +286,35 @@ function applyFrame(payload) {
   if ("wire" in payload) wire = payload.wire;
   renderSession();
   renderWire();
+  renderTabCounts();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────
+// Each pane keeps its own scroll position because both stay in the DOM; only
+// visibility changes. Re-rendering on every frame would otherwise reset the
+// scroll of the tab the reader is not looking at.
+let activeTab = "session";
+function selectTab(name) {
+  activeTab = name;
+  for (const tab of document.querySelectorAll(".tab")) {
+    tab.classList.toggle("active", tab.dataset.tab === name);
+  }
+  for (const pane of document.querySelectorAll(".pane")) {
+    pane.classList.toggle("active", pane.dataset.pane === name);
+  }
+  // The composer sends prompts, so it belongs to the conversation.
+  el("composer").style.display = name === "session" ? "flex" : "none";
+}
+for (const tab of document.querySelectorAll(".tab")) {
+  tab.addEventListener("click", () => selectTab(tab.dataset.tab));
+}
+
+/** Counts on the tab labels, so the other pane can be judged without switching. */
+function renderTabCounts() {
+  const entries = (view && view.entries) || [];
+  const requests = (wire && wire.requests) || [];
+  el("c-session").textContent = entries.length ? String(entries.length) : "";
+  el("c-monitor").textContent = requests.length ? String(requests.length) : "";
 }
 
 function connect() {
